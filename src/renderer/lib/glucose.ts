@@ -1,9 +1,12 @@
 import type { AlarmConfig } from '../../shared/stores'
 import { pointTime } from '../../shared/stores'
+import { glucoseLevel } from '../../shared/alarms'
+import type { GlucoseLevel, Thresholds } from '../../shared/alarms'
 import type { GraphPoint } from '../../shared/linkup'
 
 export type GlucoseUnit = 'mg/dL' | 'mmol/L'
-export type GlucoseLevel = 'urgent-low' | 'low' | 'in-range' | 'high' | 'urgent-high'
+export { glucoseLevel }
+export type { GlucoseLevel, Thresholds }
 
 const MGDL_PER_MMOL = 18.0182
 
@@ -15,16 +18,6 @@ export const fromUnit = (value: number, unit: string): number =>
 
 export const formatGlucose = (mgdl: number | undefined, unit: string): string =>
   mgdl === undefined || Number.isNaN(mgdl) ? '--' : String(toUnit(mgdl, unit))
-
-export type Thresholds = Pick<AlarmConfig, 'urgentLow' | 'low' | 'high' | 'urgentHigh'>
-
-export function glucoseLevel(mgdl: number, t: Thresholds): GlucoseLevel {
-  if (mgdl < t.urgentLow) return 'urgent-low'
-  if (mgdl < t.low) return 'low'
-  if (mgdl > t.urgentHigh) return 'urgent-high'
-  if (mgdl > t.high) return 'high'
-  return 'in-range'
-}
 
 export const LEVEL_CLASS: Record<GlucoseLevel, string> = {
   'urgent-low': 'bg-red-600',

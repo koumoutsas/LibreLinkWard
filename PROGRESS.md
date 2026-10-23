@@ -12,8 +12,10 @@ Workflow: commit and push after each finished piece of work; update this file.
 
 - [x] Step 4 (UI, alarm banner deferred to step 5): renderer consumes `linkup:state` / `alarms:*` IPC (`hooks/usePatients`, `hooks/useAlarmConfig`). Dashboard is a patient card grid (value, trend, level colour from per-patient thresholds, 3h sparkline with hover tooltip, "x min ago", connection-problem flag). `/patients/:id` detail page with Recharts graph (3/6/12h, target band, tooltip value+unit+time). `/settings/patients/:id` per-patient alarm settings (thresholds in the user's unit, stored in mg/dL; signal loss; sound; reset via new `alarms:reset` IPC); `settings/alert` lists patients and no longer has the global threshold override. Pure helpers in `renderer/lib/glucose.ts`. 51 tests green, renderer bundle builds.
 
+- [x] Step 5: `src/shared/alarms/evaluateAlarms.ts` (pure engine: urgent-low/low/high/urgent-high + signal-loss, 5 mg/dL hysteresis, 5 min repeat, acknowledge, escalation re-notifies, snooze suppresses). Main `alarmService.ts` runs it per patient on store changes + 30 s timer (per-patient `resolveAlarmConfig` + snooze), pushes `alarms:active` / `alarms:notify`; IPC `alarms:get-active`, `alarms:acknowledge`, `alarms:snooze`, `alarms:clear-snooze`. Renderer `AlarmBanner` (dashboard + patient page) names the patient with Acknowledge / Snooze 15/30/60m, and on notify reuses `trigger-warning-alerts` (bring to front/flash from `alertStore`) and `AudioManager` sound. 72 tests green, both bundles build.
+
 ## Known issues / notes
-- Old single-patient alarms (`useGlucoseAlerts`, `alertStore` thresholds) are no longer called from the dashboard, so there are NO audible/flash alarms until step 5. Tray number follows a patient only when exactly one is shared. Overlay/compact window mode UI was dropped from the dashboard.
+- Old `useGlucoseAlerts` hook is now dead code (superseded by the alarm engine); `alertStore` still holds the bring-to-front/flash/sound toggles. Snooze applies to all kinds incl. urgent low (no bypass). Alarm sound/flash is triggered by the renderer, so a renderer window must exist (hidden-to-tray is fine). Tray number follows a patient only when exactly one is shared. Overlay/compact window mode UI was dropped from the dashboard.
 - Settings labels added in step 4 are hardcoded English (not in i18n files yet).
 - Renderer still holds its own auth token (login gating) alongside main's credentials.
 - `npm install --legacy-peer-deps` required.
@@ -23,4 +25,4 @@ Workflow: commit and push after each finished piece of work; update this file.
 - README badges still point at upstream (CI/last commit/etc.); update when CI exists.
 
 ## Next
-- [ ] 5 alarm engine + alarm banner/queue naming the patient with per-patient acknowledge/snooze (IPC for `snooze`/`clearSnooze` not yet exposed) (should read `alarmStore` + `isSnoozed`; hook into patientStore subscription in pollingHandler), 6 Nightscout, 7 tests, 8 CI/CD, 9 docs
+- [ ] 6 Nightscout, 7 tests, 8 CI/CD, 9 docs

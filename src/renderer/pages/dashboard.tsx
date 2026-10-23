@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { GearIcon } from '@radix-ui/react-icons';
 import { BaseLayout } from '@/layouts/base-layout';
 import { LoadingScreen } from '@/components/ui/loading';
+import { AlarmBanner } from '@/components/alarm-banner';
 import { PatientCard } from '@/components/patient-card';
 import { usePatients } from '@/hooks/usePatients';
 import { useAuthStore } from '@/stores/auth';
@@ -42,6 +43,7 @@ export default function DashboardPage() {
           <GearIcon className="h-5 w-5" />
         </button>
       </div>
+      <AlarmBanner />
       {patients.length === 0 ? (
         <p className="text-muted-foreground" data-testid="no-patients">
           {status === 'signed-out'
