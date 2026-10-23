@@ -6,10 +6,12 @@ import { PollingService } from '../pollingService'
 const creds = { country: 'eu', username: 'u', password: 'p' }
 const point = { Timestamp: '2026-10-23T08:00:00Z', FactoryTimestamp: '2026-10-23T08:00:00Z', ValueInMgPerDl: 100 }
 
-const setup = (client: any, stored: typeof creds | null = null) => {
+const stored1 = { ...creds, id: 'u' }
+
+const setup = (client: any, stored: Array<typeof stored1> = [], createClient: (c: any) => any = () => client) => {
   const credentials = {
-    load: jest.fn(() => stored),
-    save: jest.fn(),
+    loadAll: jest.fn(() => stored),
+    saveAll: jest.fn(),
     clear: jest.fn(),
   }
   const patients = createPatientStore()
@@ -18,7 +20,7 @@ const setup = (client: any, stored: typeof creds | null = null) => {
     credentials: credentials as any,
     patients,
     onStatus,
-    createClient: () => client,
+    createClient,
     intervalMs: 3_600_000,
   })
   return { service, credentials, patients, onStatus }
@@ -46,7 +48,7 @@ describe('PollingService', () => {
 
   it('starts with stored credentials and fills the patient store for every patient', async () => {
     const client = okClient()
-    const { service, patients } = setup(client, creds)
+    const { service, patients } = setup(client, [stored1])
     expect(service.startIfConfigured()).toBe(true)
     await flush()
     expect(Object.keys(patients.getState().patients).sort()).toEqual(['p1', 'p2'])
@@ -59,7 +61,7 @@ describe('PollingService', () => {
     const client = okClient()
     const { service, credentials, patients } = setup(client)
     await expect(service.signIn({ ...creds, country: 'global' })).resolves.toEqual({ ok: true })
-    expect(credentials.save).toHaveBeenCalledWith({ ...creds, country: 'de' })
+    expect(credentials.saveAll).toHaveBeenCalledWith([{ ...creds, country: 'de', id: 'u' }])
     await flush()
     expect(Object.keys(patients.getState().patients)).toHaveLength(2)
     service.stop()
@@ -69,18 +71,19 @@ describe('PollingService', () => {
     const client = { ...okClient(), login: jest.fn().mockRejectedValue(new LinkUpError('bad', 'auth', 2)) }
     const { service, credentials } = setup(client)
     await expect(service.signIn(creds)).resolves.toMatchObject({ ok: false, status: 2 })
-    expect(credentials.save).not.toHaveBeenCalled()
+    expect(credentials.saveAll).not.toHaveBeenCalled()
     expect(client.getConnections).not.toHaveBeenCalled()
     expect(service.getStatus()).toBe('signed-out')
   })
 
   it('auth errors while polling halt the poller and flag auth-error', async () => {
     const client = { ...okClient(), getConnections: jest.fn().mockRejectedValue(new LinkUpError('no', 'auth', 401)) }
-    const { service, onStatus } = setup(client, creds)
+    const { service, onStatus } = setup(client, [stored1])
     service.startIfConfigured()
     await flush()
     expect(service.getStatus()).toBe('auth-error')
     expect(onStatus).toHaveBeenLastCalledWith('auth-error')
+    expect(service.getAccounts()).toEqual([{ id: 'u', username: 'u', status: 'auth-error' }])
   })
 
   it('per-patient errors mark only that patient', async () => {
@@ -89,7 +92,7 @@ describe('PollingService', () => {
       if (id === 'p2') throw new LinkUpError('down', 'network')
       return { connection: { patientId: id }, graphData: [point], glucoseMeasurement: point }
     })
-    const { service, patients } = setup(client, creds)
+    const { service, patients } = setup(client, [stored1])
     service.startIfConfigured()
     await flush()
     expect(patients.getState().patients.p1.status).toBe('ok')
@@ -98,12 +101,76 @@ describe('PollingService', () => {
   })
 
   it('signOut clears credentials and patients', async () => {
-    const { service, credentials, patients } = setup(okClient(), creds)
+    const { service, credentials, patients } = setup(okClient(), [stored1])
     service.startIfConfigured()
     await flush()
     service.signOut()
     expect(credentials.clear).toHaveBeenCalled()
     expect(patients.getState().patients).toEqual({})
     expect(service.getStatus()).toBe('signed-out')
+  })
+
+  describe('several logins', () => {
+    // Each login is its own patient (a patient's own credentials).
+    const clientFor = (patientId: string, first: string): any => ({
+      login: jest.fn().mockResolvedValue({ token: 't', accountId: 'a', country: 'de' }),
+      getSession: () => ({ token: 't', accountId: 'a', country: 'de' }),
+      getConnections: jest.fn().mockResolvedValue([{ patientId, firstName: first }]),
+      getGraph: jest.fn(async (id: string) => ({ connection: { patientId: id, firstName: first }, graphData: [point], glucoseMeasurement: point })),
+    })
+    const clients: Record<string, any> = { ann: clientFor('pa', 'Ann'), bob: clientFor('pb', 'Bob') }
+    const byUser = (c: any) => clients[c.username]
+
+    it('keeps each login\'s patients side by side', async () => {
+      const { service, credentials, patients } = setup(null, [], byUser)
+      await service.signIn({ country: 'eu', username: 'ann', password: 'p' })
+      await service.signIn({ country: 'eu', username: 'bob', password: 'p' })
+      await flush()
+      expect(Object.keys(patients.getState().patients).sort()).toEqual(['pa', 'pb'])
+      expect(patients.getState().patients.pa.accountId).toBe('ann')
+      expect(patients.getState().patients.pb.accountId).toBe('bob')
+      expect(service.getAccounts().map((a) => a.id)).toEqual(['ann', 'bob'])
+      expect(credentials.saveAll).toHaveBeenLastCalledWith([
+        expect.objectContaining({ id: 'ann' }),
+        expect.objectContaining({ id: 'bob' }),
+      ])
+      service.stop()
+    })
+
+    it('adding the same login again replaces it instead of duplicating', async () => {
+      const { service, credentials } = setup(null, [], byUser)
+      await service.signIn({ country: 'eu', username: 'ann', password: 'old' })
+      await service.signIn({ country: 'eu', username: 'ann', password: 'new' })
+      expect(service.getAccounts()).toHaveLength(1)
+      expect(credentials.saveAll).toHaveBeenLastCalledWith([expect.objectContaining({ id: 'ann', password: 'new' })])
+      service.stop()
+    })
+
+    it('removeAccount drops only that login and its patients', async () => {
+      const { service, credentials, patients } = setup(null, [], byUser)
+      await service.signIn({ country: 'eu', username: 'ann', password: 'p' })
+      await service.signIn({ country: 'eu', username: 'bob', password: 'p' })
+      await flush()
+      service.removeAccount('ann')
+      expect(Object.keys(patients.getState().patients)).toEqual(['pb'])
+      expect(service.getAccounts().map((a) => a.id)).toEqual(['bob'])
+      expect(credentials.saveAll).toHaveBeenLastCalledWith([expect.objectContaining({ id: 'bob' })])
+      expect(service.getStatus()).toBe('running')
+      service.removeAccount('bob')
+      expect(service.getStatus()).toBe('signed-out')
+      service.stop()
+    })
+
+    it('a failing login does not stop the other one', async () => {
+      clients.bad = { ...clientFor('pc', 'Cy'), getConnections: jest.fn().mockRejectedValue(new LinkUpError('no', 'auth', 401)) }
+      const { service, patients } = setup(null, [], byUser)
+      await service.signIn({ country: 'eu', username: 'ann', password: 'p' })
+      await service.signIn({ country: 'eu', username: 'bad', password: 'p' })
+      await flush()
+      expect(service.getAccounts().find((a) => a.id === 'bad')?.status).toBe('auth-error')
+      expect(service.getAccounts().find((a) => a.id === 'ann')?.status).toBe('running')
+      expect(patients.getState().patients.pa).toBeDefined()
+      service.stop()
+    })
   })
 })

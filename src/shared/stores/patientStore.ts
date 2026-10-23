@@ -7,6 +7,8 @@ export type PatientStatus = 'ok' | 'error'
 
 export type PatientState = {
   patientId: string
+  /** The LibreLinkUp login this patient was fetched with (one view per login). */
+  accountId?: string
   name: string
   targetLow?: number
   targetHigh?: number
@@ -21,9 +23,11 @@ export type PatientState = {
 
 export type PatientStoreState = {
   patients: Record<string, PatientState>
-  applyConnections: (connections: Connection[]) => void
+  applyConnections: (connections: Connection[], accountId?: string) => void
   applyGraph: (patientId: string, graph: GraphResult, now?: number) => void
   setError: (patientId: string, message: string) => void
+  /** Drops every patient that came from this login. */
+  removeAccount: (accountId: string) => void
   clear: () => void
 }
 
@@ -56,14 +60,18 @@ export const createPatientStore = () =>
     patients: {},
 
     // Adds new patients, refreshes names/targets, drops patients that are
-    // no longer shared with this account.
-    applyConnections: (connections) =>
+    // no longer shared with this account. Other accounts' patients are kept.
+    applyConnections: (connections, accountId) =>
       set((s) => {
         const patients: Record<string, PatientState> = {}
+        for (const [id, p] of Object.entries(s.patients)) {
+          if (p.accountId !== accountId) patients[id] = p
+        }
         for (const c of connections) {
           const prev = s.patients[c.patientId]
           patients[c.patientId] = {
             ...prev,
+            accountId,
             history: prev?.history ?? [],
             status: prev?.status ?? 'ok',
             patientId: c.patientId,
@@ -111,6 +119,13 @@ export const createPatientStore = () =>
           },
         }
       }),
+
+    removeAccount: (accountId) =>
+      set((s) => ({
+        patients: Object.fromEntries(
+          Object.entries(s.patients).filter(([, p]) => p.accountId !== accountId),
+        ),
+      })),
 
     clear: () => set({ patients: {} }),
   }))

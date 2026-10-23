@@ -25,13 +25,16 @@ As there is no official API from [Abbott](https://www.freestyle.abbott/), the Li
 - mg/dL and mmol/L, dark mode.
 
 ## Setup
-1. As the sharing person, open the Libre app, go to _Connected Apps_ > _LibreLinkUp_ > _Manage_ > _Add connection_ and invite the account you will use here. Repeat for every patient you follow (nurses: use one LibreLinkUp account that every patient invites).
-2. Install LibreLinkWard from [GitHub Releases](https://github.com/koumoutsas/LibreLinkWard/releases). Builds are **unsigned**, so macOS asks you to allow it in _System Settings > Privacy & Security_ and Windows SmartScreen shows a warning.
-3. Sign in with the LibreLinkUp credentials. All connected patients appear on the dashboard and are polled once a minute.
+1. Install LibreLinkWard from [GitHub Releases](https://github.com/koumoutsas/LibreLinkWard/releases). Builds are **unsigned**, so macOS asks you to allow it in _System Settings > Privacy & Security_ and Windows SmartScreen shows a warning.
+2. Sign in with a patient's LibreLinkUp credentials. The operator needs no Libre account of their own.
+3. Press **Add patient** on the dashboard and enter the next patient's credentials. Each login becomes its own view, stacked vertically below the others. Remove a view with **Remove**.
+
+Each login is verified before it is saved, and all logins are polled once a minute. A login that is a follower account with several shared patients shows all of them in its view.
 
 ## Usage
-- **Dashboard**: click a card for the patient page. Cards are coloured by that patient's own thresholds.
+- **Dashboard**: one view per login, each with the patient's value, trend and a 6 h graph (hover for value and time). Click a view for the patient page (3/6/12 h graph, alarms). Views are coloured by that patient's own thresholds.
 - **Settings > Alerts** lists patients; open one to edit its alarms.
+- **Logout** (Settings > Account) removes all logins.
 
 ### Alarms
 Each patient has their own configuration. Defaults: urgent low 55, low = sensor target low (70), high = sensor target high (180), urgent high 250 mg/dL; signal loss after 20 min. Thresholds are shown in your chosen unit.

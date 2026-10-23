@@ -3,7 +3,9 @@ import type { PatientState } from '../../shared/stores'
 
 export type LinkUpStatus = string
 
-export type LinkUpSnapshot = { status: LinkUpStatus; patients: PatientState[] }
+export type AccountInfo = { id: string; username: string; status: 'running' | 'auth-error' }
+
+export type LinkUpSnapshot = { status: LinkUpStatus; accounts?: AccountInfo[]; patients: PatientState[] }
 
 /** Live view of the main-process patient store via `linkup:*` IPC. */
 export function usePatients(): LinkUpSnapshot & { loaded: boolean } {

@@ -20,31 +20,46 @@ describe('CredentialStore', () => {
   })
   afterEach(() => fs.rmSync(dir, { recursive: true, force: true }))
 
-  it('round-trips and never writes the password in plaintext', () => {
+  it('round-trips several logins and never writes a password in plaintext', () => {
     const store = new CredentialStore(file, fakeSafe())
-    store.save(creds)
-    expect(fs.readFileSync(file).toString()).not.toContain('secret-pw')
-    expect(store.load()).toEqual(creds)
+    const second = { country: 'us', username: 'Pat@Example.com', password: 'other-pw', id: 'pat@example.com' }
+    store.saveAll([{ ...creds, id: 'nurse@example.com' }, second])
+    const raw = fs.readFileSync(file).toString()
+    expect(raw).not.toContain('secret-pw')
+    expect(raw).not.toContain('other-pw')
+    expect(store.loadAll()).toEqual([{ ...creds, id: 'nurse@example.com' }, second])
+  })
+
+  it('reads the older single-login file format', () => {
+    fs.mkdirSync(path.dirname(file), { recursive: true })
+    fs.writeFileSync(file, fakeSafe().encryptString(JSON.stringify(creds)))
+    expect(new CredentialStore(file, fakeSafe()).loadAll()).toEqual([{ ...creds, id: 'nurse@example.com' }])
   })
 
   it('refuses to save when encryption is unavailable', () => {
     const store = new CredentialStore(file, fakeSafe(false))
-    expect(() => store.save(creds)).toThrow(/not available/)
+    expect(() => store.saveAll([{ ...creds, id: 'x' }])).toThrow(/not available/)
     expect(fs.existsSync(file)).toBe(false)
   })
 
-  it('load returns null when missing, corrupt, or encryption unavailable', () => {
-    expect(new CredentialStore(file, fakeSafe()).load()).toBeNull()
-    new CredentialStore(file, fakeSafe()).save(creds)
-    expect(new CredentialStore(file, fakeSafe(false)).load()).toBeNull()
+  it('loadAll returns [] when missing, corrupt, or encryption unavailable', () => {
+    expect(new CredentialStore(file, fakeSafe()).loadAll()).toEqual([])
+    new CredentialStore(file, fakeSafe()).saveAll([{ ...creds, id: 'x' }])
+    expect(new CredentialStore(file, fakeSafe(false)).loadAll()).toEqual([])
     fs.writeFileSync(file, 'garbage')
-    expect(new CredentialStore(file, fakeSafe()).load()).toBeNull()
+    expect(new CredentialStore(file, fakeSafe()).loadAll()).toEqual([])
+  })
+
+  it('drops incomplete entries', () => {
+    fs.mkdirSync(path.dirname(file), { recursive: true })
+    fs.writeFileSync(file, fakeSafe().encryptString(JSON.stringify([creds, { username: 'x' }])))
+    expect(new CredentialStore(file, fakeSafe()).loadAll()).toHaveLength(1)
   })
 
   it('clear removes the file', () => {
     const store = new CredentialStore(file, fakeSafe())
-    store.save(creds)
+    store.saveAll([{ ...creds, id: 'x' }])
     store.clear()
-    expect(store.load()).toBeNull()
+    expect(store.loadAll()).toEqual([])
   })
 })

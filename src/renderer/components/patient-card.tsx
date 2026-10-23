@@ -6,7 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import { cn } from '@/lib/utils'
 import { LEVEL_CLASS, formatGlucose, glucoseLevel, minutesSince } from '@/lib/glucose'
 
-const SPARKLINE_WINDOW_MS = 3 * 60 * 60 * 1000
+const GRAPH_WINDOW_MS = 6 * 60 * 60 * 1000
 
 type Props = { patient: PatientState; now?: number; onOpen: (patientId: string) => void }
 
@@ -34,13 +34,12 @@ export function PatientCard({ patient, now, onOpen }: Props) {
       </div>
       <div className="px-2 pt-1 text-foreground/70">
         <PatientGraph
-          compact
           history={patient.history}
           unit={unit}
           targetLow={config?.low ?? patient.targetLow ?? 70}
           targetHigh={config?.high ?? patient.targetHigh ?? 180}
-          windowMs={SPARKLINE_WINDOW_MS}
-          height={70}
+          windowMs={GRAPH_WINDOW_MS}
+          height={200}
         />
       </div>
       <div className="flex justify-between px-4 pb-2 text-xs text-muted-foreground">

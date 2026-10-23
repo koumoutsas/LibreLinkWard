@@ -1,8 +1,13 @@
 import { Connection, Credentials, GraphResult, LinkUpClient, LinkUpError, Poller } from '../shared/linkup'
 import type { PatientStore } from '../shared/stores'
-import { CredentialStore } from './credentialStore'
+import { CredentialStore, StoredAccount, accountIdFor } from './credentialStore'
 
 export type ServiceStatus = 'signed-out' | 'running' | 'auth-error'
+
+export type AccountStatus = 'running' | 'auth-error'
+
+/** What the renderer is told about each login; never the password. */
+export type AccountInfo = { id: string; username: string; status: AccountStatus }
 
 export type PollingServiceDeps = {
   credentials: CredentialStore
@@ -14,12 +19,14 @@ export type PollingServiceDeps = {
 }
 
 /**
- * Owns the single LibreLinkUp client + poller in the main process and feeds
- * the patient store.
+ * Owns one LibreLinkUp client + poller per login in the main process and
+ * feeds the patient store. Each login (a patient's own credentials, or a
+ * follower account with several patients) is an independent view.
  */
 export class PollingService {
-  private poller?: Poller
-  private status: ServiceStatus = 'signed-out'
+  private readonly pollers = new Map<string, Poller>()
+  private readonly accounts = new Map<string, StoredAccount>()
+  private readonly accountStatus = new Map<string, AccountStatus>()
   private readonly createClient: (c: Credentials) => LinkUpClient
 
   constructor(private readonly deps: PollingServiceDeps) {
@@ -27,23 +34,34 @@ export class PollingService {
   }
 
   getStatus(): ServiceStatus {
-    return this.status
+    if (this.accounts.size === 0) return 'signed-out'
+    return [...this.accountStatus.values()].includes('auth-error') ? 'auth-error' : 'running'
   }
 
-  /** Starts polling with stored credentials, if any. */
+  getAccounts(): AccountInfo[] {
+    return [...this.accounts.values()].map((a) => ({
+      id: a.id,
+      username: a.username,
+      status: this.accountStatus.get(a.id) ?? 'running',
+    }))
+  }
+
+  /** Starts polling every stored login, if any. */
   startIfConfigured(): boolean {
-    const credentials = this.deps.credentials.load()
-    if (!credentials) return false
-    this.begin(credentials)
-    return true
+    const stored = this.deps.credentials.loadAll()
+    for (const account of stored) this.begin(account)
+    return stored.length > 0
   }
 
-  /** Verifies the credentials with a real login, then stores them and polls. */
+  /**
+   * Verifies the credentials with a real login, then stores them and polls.
+   * Adding a login that already exists replaces it.
+   */
   async signIn(credentials: Credentials): Promise<{ ok: true } | { ok: false; error: string; status?: number }> {
     const client = this.createClient(credentials)
+    let country: string
     try {
-      const session = await client.login()
-      this.deps.credentials.save({ ...credentials, country: session.country })
+      country = (await client.login()).country
     } catch (e) {
       return {
         ok: false,
@@ -51,40 +69,64 @@ export class PollingService {
         status: e instanceof LinkUpError ? e.status : undefined,
       }
     }
-    this.begin({ ...credentials, country: client.getSession()!.country }, client)
+    const account: StoredAccount = { ...credentials, country, id: accountIdFor(credentials.username) }
+    try {
+      const others = [...this.accounts.values()].filter((a) => a.id !== account.id)
+      this.deps.credentials.saveAll([...others, account])
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) }
+    }
+    this.begin(account, client)
     return { ok: true }
   }
 
+  /** Removes one login and all of its patients. */
+  removeAccount(id: string): void {
+    if (!this.accounts.has(id)) return
+    this.halt(id)
+    this.accounts.delete(id)
+    this.accountStatus.delete(id)
+    this.deps.credentials.saveAll([...this.accounts.values()])
+    this.deps.patients.getState().removeAccount(id)
+    this.notify()
+  }
+
   signOut(): void {
-    this.halt()
+    for (const id of [...this.pollers.keys()]) this.halt(id)
+    this.accounts.clear()
+    this.accountStatus.clear()
     this.deps.credentials.clear()
     this.deps.patients.getState().clear()
-    this.setStatus('signed-out')
+    this.notify()
   }
 
   stop(): void {
-    this.halt()
+    for (const id of [...this.pollers.keys()]) this.halt(id)
   }
 
-  private begin(credentials: Credentials, client = this.createClient(credentials)): void {
-    this.halt()
+  private begin(account: StoredAccount, client = this.createClient(account)): void {
+    this.halt(account.id)
+    this.accounts.set(account.id, account)
+    this.accountStatus.set(account.id, 'running')
     const store = this.deps.patients.getState()
-    this.poller = new Poller({
+    const poller = new Poller({
       client,
       intervalMs: this.deps.intervalMs,
-      onConnections: (c: Connection[]) => store.applyConnections(c),
+      onConnections: (c: Connection[]) => store.applyConnections(c, account.id),
       onUpdate: (id: string, graph: GraphResult) => store.applyGraph(id, graph),
-      onError: (error, patientId) => this.handleError(error, patientId),
+      onError: (error, patientId) => this.handleError(account.id, error, patientId),
     })
-    this.setStatus('running')
-    this.poller.start()
+    this.pollers.set(account.id, poller)
+    this.notify()
+    poller.start()
   }
 
-  private handleError(error: unknown, patientId?: string): void {
+  private handleError(accountId: string, error: unknown, patientId?: string): void {
     // Bad credentials will not fix themselves: stop instead of hammering the API.
     if (error instanceof LinkUpError && error.kind === 'auth') {
-      this.halt()
-      this.setStatus('auth-error')
+      this.halt(accountId)
+      this.accountStatus.set(accountId, 'auth-error')
+      this.notify()
       return
     }
     if (patientId) {
@@ -94,13 +136,12 @@ export class PollingService {
     }
   }
 
-  private halt(): void {
-    this.poller?.stop()
-    this.poller = undefined
+  private halt(id: string): void {
+    this.pollers.get(id)?.stop()
+    this.pollers.delete(id)
   }
 
-  private setStatus(status: ServiceStatus): void {
-    this.status = status
-    this.deps.onStatus?.(status)
+  private notify(): void {
+    this.deps.onStatus?.(this.getStatus())
   }
 }

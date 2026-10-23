@@ -26,6 +26,7 @@ const broadcast = (channel: string, payload: unknown) =>
 
 const snapshot = () => ({
   status: service?.getStatus() ?? 'signed-out',
+  accounts: service?.getAccounts() ?? [],
   patients: Object.values(patientStore.getState().patients),
 })
 
@@ -64,6 +65,9 @@ export const registerPollingHandler = () => {
   ]
 
   ipcMain.handle('linkup:sign-in', (_e, credentials: Credentials) => service!.signIn(credentials))
+  ipcMain.handle('linkup:remove-account', (_e, accountId: string) =>
+    service!.removeAccount(accountId),
+  )
   ipcMain.handle('linkup:get-state', () => snapshot())
   ipcMain.handle('alarms:get', (_e, patientId: string) => {
     const p = patientStore.getState().patients[patientId]
@@ -139,6 +143,7 @@ export const destroyPollingHandler = () => {
   unsubscribe = []
   ;[
     'linkup:sign-in',
+    'linkup:remove-account',
     'linkup:get-state',
     'alarms:get',
     'alarms:set',

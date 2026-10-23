@@ -90,3 +90,22 @@ describe('alarmStore', () => {
     expect(isSnoozed(s.getState(), 'p1', 0)).toBe(false)
   })
 })
+
+describe('patientStore with several logins', () => {
+  it('keeps other logins\' patients when one login refreshes its connections', () => {
+    const store = createPatientStore()
+    store.getState().applyConnections([{ patientId: 'a', firstName: 'Ann' }] as any, 'ann')
+    store.getState().applyConnections([{ patientId: 'b', firstName: 'Bob' }] as any, 'bob')
+    store.getState().applyConnections([{ patientId: 'a2', firstName: 'Ann' }] as any, 'ann')
+    expect(Object.keys(store.getState().patients).sort()).toEqual(['a2', 'b'])
+    expect(store.getState().patients.b.accountId).toBe('bob')
+  })
+
+  it('removeAccount drops only that login\'s patients', () => {
+    const store = createPatientStore()
+    store.getState().applyConnections([{ patientId: 'a' }] as any, 'ann')
+    store.getState().applyConnections([{ patientId: 'b' }] as any, 'bob')
+    store.getState().removeAccount('ann')
+    expect(Object.keys(store.getState().patients)).toEqual(['b'])
+  })
+})

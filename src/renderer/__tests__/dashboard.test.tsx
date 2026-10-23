@@ -93,6 +93,62 @@ describe('dashboard', () => {
   })
 })
 
+describe('several logins', () => {
+  const withAccounts = () => {
+    const invoke = jest.fn<Promise<any>, [string, ...unknown[]]>(async (channel: string) =>
+      channel === 'linkup:get-state'
+        ? {
+            status: 'running',
+            accounts: [
+              { id: 'ann', username: 'ann@example.com', status: 'running' },
+              { id: 'bob', username: 'bob@example.com', status: 'running' },
+            ],
+            patients: [
+              { ...patient('a', 'Alice', 100), accountId: 'ann' },
+              { ...patient('b', 'Bob', 120), accountId: 'bob' },
+            ],
+          }
+        : config,
+    )
+    ;(window as any).electron.ipcRenderer.invoke = invoke
+    return invoke
+  }
+
+  it('stacks one section per login, each with its own patient', async () => {
+    withAccounts()
+    renderDashboard()
+    const ann = await screen.findByTestId('account-ann')
+    const bob = screen.getByTestId('account-bob')
+    expect(ann).toHaveTextContent('ann@example.com')
+    expect(ann).toHaveTextContent('Alice')
+    expect(ann).not.toHaveTextContent('Bob')
+    expect(bob).toHaveTextContent('Bob')
+    expect(ann.compareDocumentPosition(bob) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('removes a login', async () => {
+    const invoke = withAccounts()
+    renderDashboard()
+    fireEvent.click(await screen.findByLabelText('Remove bob@example.com'))
+    expect(invoke).toHaveBeenCalledWith('linkup:remove-account', 'bob')
+  })
+
+  it('adds a login through the form', async () => {
+    const invoke = withAccounts()
+    invoke.mockImplementation(async (channel: string) =>
+      channel === 'linkup:sign-in' ? { ok: true } : channel === 'linkup:get-state' ? { status: 'running', accounts: [], patients: [] } : config,
+    )
+    renderDashboard()
+    fireEvent.click(await screen.findByLabelText('Add patient'))
+    fireEvent.change(screen.getByPlaceholderText('Patient username (email)'), { target: { value: 'pat@example.com' } })
+    fireEvent.change(screen.getByPlaceholderText('Password'), { target: { value: 'pw' } })
+    fireEvent.submit(screen.getByTestId('add-patient-form'))
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith('linkup:sign-in', { username: 'pat@example.com', password: 'pw', country: 'global' }),
+    )
+  })
+})
+
 describe('graph tooltip', () => {
   it('shows value, unit and time of the hovered point', () => {
     const t = Date.parse('2026-01-01T10:30:00Z')

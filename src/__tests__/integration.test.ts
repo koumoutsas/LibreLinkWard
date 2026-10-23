@@ -43,7 +43,7 @@ describe('polling -> store -> alarm -> Nightscout (mock servers)', () => {
     const alarms = createAlarmStore()
     const notes: AlarmNotification[] = []
     const alarmService = new AlarmService({ patients, alarms, onActive: () => {}, onNotify: (n) => notes.push(n) })
-    const credentials = { load: () => null, save: jest.fn(), clear: jest.fn() }
+    const credentials = { loadAll: () => [], saveAll: jest.fn(), clear: jest.fn() }
     const polling = new PollingService({
       credentials: credentials as any,
       patients,
@@ -58,7 +58,7 @@ describe('polling -> store -> alarm -> Nightscout (mock servers)', () => {
   it('signs in, loads every patient and raises per-patient alarms', async () => {
     const { patients, notes, alarmService, polling, credentials } = build()
     await expect(polling.signIn(creds)).resolves.toEqual({ ok: true })
-    expect(credentials.save).toHaveBeenCalledWith({ ...creds, country: 'de' })
+    expect(credentials.saveAll).toHaveBeenCalledWith([{ ...creds, country: 'de', id: creds.username.toLowerCase() }])
     await waitFor(() => {
       const all = Object.values(patients.getState().patients)
       return all.length === 3 && all.every((p) => p.latest)
