@@ -44,7 +44,7 @@ Each patient has their own configuration. Defaults: urgent low 55, low = sensor 
 In a patient's settings, enable Nightscout and enter the URL, API secret and a device name, then press _Test_. New readings are uploaded via API v1 (`POST /api/v1/entries`), resuming after Nightscout's newest entry so nothing is duplicated, and retried with backoff on failure. Only readings still in the app's 12 h memory can be uploaded, so an outage longer than 12 h loses data. The secret is stored encrypted and never shown again.
 
 ## Build
-Requires Node 20+. `npm install --legacy-peer-deps`
+Requires Node 22.15+. `npm install --legacy-peer-deps`
 
 | Command | Purpose |
 |---|---|

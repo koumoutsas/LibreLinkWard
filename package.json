@@ -153,7 +153,7 @@
     "core-js": "^3.40.0",
     "cross-env": "^7.0.3",
     "css-loader": "^7.1.2",
-    "css-minimizer-webpack-plugin": "^7.0.0",
+    "css-minimizer-webpack-plugin": "^8.0.0",
     "detect-port": "^2.1.0",
     "electron": "^45.0.0",
     "electron-builder": "^26.15.3",
@@ -197,7 +197,7 @@
     "webpack": "^5.97.1",
     "webpack-bundle-analyzer": "^4.10.2",
     "webpack-cli": "^6.0.1",
-    "webpack-dev-server": "^5.2.0",
+    "webpack-dev-server": "^6.1.0",
     "webpack-merge": "^6.0.1"
   },
   "build": {
@@ -332,5 +332,8 @@
       "src/main/**"
     ],
     "logLevel": "quiet"
+  },
+  "overrides": {
+    "postcss-selector-parser": "^7.1.6"
   }
 }

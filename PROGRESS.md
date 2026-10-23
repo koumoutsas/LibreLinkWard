@@ -28,6 +28,9 @@ Workflow: commit and push after each finished piece of work; update this file.
 
 - [x] Tooling upgrade: electron 34 -> 45, electron-builder 25 -> 26, @electron/rebuild 4, @electron/packager 20 (clears the critical `tar` finding and the Electron advisories). electron-builder 26 needs `linux.desktop.entry` (schema change). Full `npm audit`: 29 -> 14 (12 moderate, 2 high: `brace-expansion` fixable by plain `npm audit fix`, `serialize-javascript` via webpack css-minimizer, build-time). Typecheck, 89 tests, build, packaged e2e green locally; CI to confirm dmg/msi/nsis/AppImage/deb.
 
+- [x] Vulnerabilities cleared: `npm audit` = 0 (full tree). Changes: `npm audit fix`, css-minimizer-webpack-plugin 8, webpack-dev-server 6 (removed the redundant manual client/HMR entries from `webpack.config.renderer.dev.ts`; `hot: true` injects them), npm `overrides` forcing postcss-selector-parser ^7.1.6 (Tailwind 3 stays; utilities verified in the bundle). Toolchain now needs **Node >= 22.15** (README and all workflows bumped from 20).
+- **TODO: CI matrix is temporarily macOS-only** (`ci.yml`, both jobs) while verifying the upgrade; restore `ubuntu-latest, windows-latest`, and check dmg/msi/nsis/AppImage/deb via a tag/release build.
+
 ## Known issues / notes
 - Nightscout: uploads only what is in the 12 h in-memory history, so an outage longer than that loses readings; API v3 not evaluated; labels hardcoded English; logout keeps Nightscout configs.
 - Old `useGlucoseAlerts` hook is now dead code (superseded by the alarm engine); `alertStore` still holds the bring-to-front/flash/sound toggles. Snooze applies to all kinds incl. urgent low (no bypass). Alarm sound/flash is triggered by the renderer, so a renderer window must exist (hidden-to-tray is fine). Tray number follows a patient only when exactly one is shared. Overlay/compact window mode UI was dropped from the dashboard.

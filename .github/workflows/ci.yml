@@ -21,12 +21,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        # Temporarily macOS only (self-hosted runner) while verifying the
+        # Electron 45 / electron-builder 26 upgrade; restore ubuntu-latest and
+        # windows-latest afterwards.
+        os: [macos-latest]
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '22'
           cache: npm
       - name: Install dependencies
         run: npm install --prefer-offline --legacy-peer-deps
@@ -54,12 +57,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        # Temporarily macOS only (self-hosted runner) while verifying the
+        # Electron 45 / electron-builder 26 upgrade; restore ubuntu-latest and
+        # windows-latest afterwards.
+        os: [macos-latest]
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '22'
           cache: npm
       - name: Install dependencies
         run: npm install --prefer-offline --legacy-peer-deps
