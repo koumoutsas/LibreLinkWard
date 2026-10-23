@@ -6,6 +6,7 @@ import { ToggleSwitch } from '@/components/ui/toggle-switch';
 import { usePatients } from '@/hooks/usePatients';
 import { useAlarmConfig } from '@/hooks/useAlarmConfig';
 import { useAuthStore } from '@/stores/auth';
+import { NightscoutSettings } from '@/components/nightscout-settings';
 import { fromUnit, toUnit } from '@/lib/glucose';
 
 const FIELDS = [
@@ -75,6 +76,7 @@ export default function SettingsPatientAlarmsPage() {
             <Button variant="ghost" onClick={() => window.electron.ipcRenderer.invoke('alarms:reset', patientId)}>
               Reset to sensor defaults
             </Button>
+            {patientId && <NightscoutSettings patientId={patientId} />}
           </>
         )}
       </div>

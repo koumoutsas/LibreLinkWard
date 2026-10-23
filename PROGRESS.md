@@ -14,7 +14,10 @@ Workflow: commit and push after each finished piece of work; update this file.
 
 - [x] Step 5: `src/shared/alarms/evaluateAlarms.ts` (pure engine: urgent-low/low/high/urgent-high + signal-loss, 5 mg/dL hysteresis, 5 min repeat, acknowledge, escalation re-notifies, snooze suppresses). Main `alarmService.ts` runs it per patient on store changes + 30 s timer (per-patient `resolveAlarmConfig` + snooze), pushes `alarms:active` / `alarms:notify`; IPC `alarms:get-active`, `alarms:acknowledge`, `alarms:snooze`, `alarms:clear-snooze`. Renderer `AlarmBanner` (dashboard + patient page) names the patient with Acknowledge / Snooze 15/30/60m, and on notify reuses `trigger-warning-alerts` (bring to front/flash from `alertStore`) and `AudioManager` sound. 72 tests green, both bundles build.
 
+- [x] Step 6: `src/main/nightscout/` (`payload.ts` sgv entry + SHA1 api-secret + trend mapping; `client.ts` API v1 test/latest/upload with injectable http; `configStore.ts` per-patient config encrypted via safeStorage, `nightscout.bin`; `uploader.ts` watches patientStore, resumes after Nightscout's newest entry (dedupe), serialises per patient, exponential backoff retry from the same watermark, re-syncs when URL/secret change). IPC `nightscout:get` (secret never returned, only `hasSecret`), `nightscout:set`, `nightscout:test`; push `nightscout:changed`. UI: `NightscoutSettings` card on the per-patient settings page (off by default, test button, last upload / error). 83 tests green, both bundles build.
+
 ## Known issues / notes
+- Nightscout: uploads only what is in the 12 h in-memory history, so an outage longer than that loses readings; API v3 not evaluated; labels hardcoded English; no mock-Nightscout integration test yet (step 7); logout keeps Nightscout configs.
 - Old `useGlucoseAlerts` hook is now dead code (superseded by the alarm engine); `alertStore` still holds the bring-to-front/flash/sound toggles. Snooze applies to all kinds incl. urgent low (no bypass). Alarm sound/flash is triggered by the renderer, so a renderer window must exist (hidden-to-tray is fine). Tray number follows a patient only when exactly one is shared. Overlay/compact window mode UI was dropped from the dashboard.
 - Settings labels added in step 4 are hardcoded English (not in i18n files yet).
 - Renderer still holds its own auth token (login gating) alongside main's credentials.
@@ -25,4 +28,4 @@ Workflow: commit and push after each finished piece of work; update this file.
 - README badges still point at upstream (CI/last commit/etc.); update when CI exists.
 
 ## Next
-- [ ] 6 Nightscout, 7 tests, 8 CI/CD, 9 docs
+- [ ] 7 tests (incl. mock LibreLinkUp + mock Nightscout integration, RTL, e2e, coverage gate), 8 CI/CD, 9 docs

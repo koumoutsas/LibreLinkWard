@@ -11,10 +11,14 @@ import { AlarmService } from './alarmService'
 import { CredentialStore } from './credentialStore'
 import { readJson, writeJson } from './persistence'
 import { PollingService } from './pollingService'
+import { NightscoutClient } from './nightscout/client'
+import { DEFAULT_DEVICE_NAME, NightscoutConfig, NightscoutConfigStore } from './nightscout/configStore'
+import { NightscoutUploader } from './nightscout/uploader'
 
 export const patientStore = createPatientStore()
 let service: PollingService | undefined
 let alarmService: AlarmService | undefined
+let uploader: NightscoutUploader | undefined
 let unsubscribe: Array<() => void> = []
 
 const broadcast = (channel: string, payload: unknown) =>
@@ -42,6 +46,14 @@ export const registerPollingHandler = () => {
     onActive: (active) => broadcast('alarms:active', active),
     onNotify: (n) => broadcast('alarms:notify', n),
   })
+
+  const nsStore = new NightscoutConfigStore(path.join(dir, 'nightscout.bin'), safeStorage)
+  let nsConfigs = nsStore.load()
+  uploader = new NightscoutUploader({
+    patients: patientStore,
+    onStatus: () => broadcast('nightscout:changed', null),
+  })
+  uploader.setConfigs(nsConfigs)
 
   unsubscribe = [
     patientStore.subscribe(() => broadcast('linkup:state', snapshot())),
@@ -73,14 +85,55 @@ export const registerPollingHandler = () => {
   ipcMain.handle('alarms:clear-snooze', (_e, patientId: string) =>
     alarmService!.clearSnooze(patientId),
   )
+  // The API secret never goes back to the renderer; only whether one is set.
+  ipcMain.handle('nightscout:get', (_e, patientId: string) => {
+    const c = nsConfigs[patientId]
+    return {
+      enabled: c?.enabled ?? false,
+      url: c?.url ?? '',
+      deviceName: c?.deviceName ?? DEFAULT_DEVICE_NAME,
+      hasSecret: !!c?.apiSecret,
+      status: uploader!.getStatus(patientId),
+    }
+  })
+  ipcMain.handle(
+    'nightscout:set',
+    (_e, patientId: string, patch: Partial<NightscoutConfig>) => {
+      const prev = nsConfigs[patientId]
+      const next: NightscoutConfig = {
+        ...{ enabled: false, url: '', apiSecret: '', deviceName: DEFAULT_DEVICE_NAME },
+        ...prev,
+        ...patch,
+      }
+      // An empty secret in the patch means "unchanged".
+      if (!patch.apiSecret) next.apiSecret = prev?.apiSecret ?? ''
+      nsConfigs = { ...nsConfigs, [patientId]: next }
+      nsStore.save(nsConfigs)
+      uploader!.setConfigs(nsConfigs)
+    },
+  )
+  ipcMain.handle(
+    'nightscout:test',
+    async (_e, patientId: string, draft: { url: string; apiSecret?: string }) => {
+      const apiSecret = draft.apiSecret || nsConfigs[patientId]?.apiSecret || ''
+      try {
+        await new NightscoutClient({ url: draft.url, apiSecret }).testConnection()
+        return { ok: true }
+      } catch (e) {
+        return { ok: false, error: e instanceof Error ? e.message : String(e) }
+      }
+    },
+  )
   ipcMain.on('logout', () => service!.signOut())
 
   alarmService.start()
+  uploader.start()
   service.startIfConfigured()
 }
 
 export const destroyPollingHandler = () => {
   alarmService?.stop()
+  uploader?.stop()
   service?.stop()
   unsubscribe.forEach((u) => u())
   unsubscribe = []
@@ -94,5 +147,8 @@ export const destroyPollingHandler = () => {
     'alarms:acknowledge',
     'alarms:snooze',
     'alarms:clear-snooze',
+    'nightscout:get',
+    'nightscout:set',
+    'nightscout:test',
   ].forEach((c) => ipcMain.removeHandler(c))
 }
