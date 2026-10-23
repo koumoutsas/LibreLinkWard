@@ -26,6 +26,8 @@ Workflow: commit and push after each finished piece of work; update this file.
 
 - [x] Dependency audit: removed unused `@diakem/libre-link-up-api-client` (old axios 0.27), `npm audit fix` (no --force). `npm audit --omit=dev`: 11 -> 0 after upgrading react-router-dom to v7 (no code changes needed; jest `setupFiles` polyfills TextEncoder for jsdom). Remaining ~31 total are dev/build tooling. Typecheck, 89 tests, build and e2e green.
 
+- [x] Tooling upgrade: electron 34 -> 45, electron-builder 25 -> 26, @electron/rebuild 4, @electron/packager 20 (clears the critical `tar` finding and the Electron advisories). electron-builder 26 needs `linux.desktop.entry` (schema change). Full `npm audit`: 29 -> 14 (12 moderate, 2 high: `brace-expansion` fixable by plain `npm audit fix`, `serialize-javascript` via webpack css-minimizer, build-time). Typecheck, 89 tests, build, packaged e2e green locally; CI to confirm dmg/msi/nsis/AppImage/deb.
+
 ## Known issues / notes
 - Nightscout: uploads only what is in the 12 h in-memory history, so an outage longer than that loses readings; API v3 not evaluated; labels hardcoded English; logout keeps Nightscout configs.
 - Old `useGlucoseAlerts` hook is now dead code (superseded by the alarm engine); `alertStore` still holds the bring-to-front/flash/sound toggles. Snooze applies to all kinds incl. urgent low (no bypass). Alarm sound/flash is triggered by the renderer, so a renderer window must exist (hidden-to-tray is fine). Tray number follows a patient only when exactly one is shared. Overlay/compact window mode UI was dropped from the dashboard.
