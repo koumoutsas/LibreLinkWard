@@ -85,6 +85,8 @@ describe('polling -> store -> alarm -> Nightscout (mock servers)', () => {
     const { patients, polling } = build()
     await polling.signIn(creds)
     await waitFor(() => !!patients.getState().patients.ann?.latest)
+    // Stop the background poller so only the client below talks to the mock.
+    polling.stop()
     llu.state.requests.length = 0
     llu.state.reject401 = 1
     llu.state.token = 'token-2'
