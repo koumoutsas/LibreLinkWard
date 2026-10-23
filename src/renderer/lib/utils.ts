@@ -99,12 +99,11 @@ export function hash256(input: string): string {
 
 export async function getGlucoseValueForTray(token: string, country: string, accountId: string): Promise<number> {
   try {
-    // getCGMData's declared return type is wrong; replaced in the API refactor.
     const data = (await getCGMData({
       token,
       country,
       accountId,
-    })) as any;
+    })) as { glucoseMeasurement?: { ValueInMgPerDl?: number } } | null;
 
      if (data?.glucoseMeasurement?.ValueInMgPerDl) {
        const value = getUserValue(data.glucoseMeasurement.ValueInMgPerDl);

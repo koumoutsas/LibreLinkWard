@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import SettingsLayout from "@/layouts/settings-layout"
 import { getConnection } from "@/lib/linkup"
+import type { Connection } from "../../../shared/linkup"
 import { useAuthStore } from "@/stores/auth"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -10,7 +11,7 @@ import { useClearSession } from "@/hooks/session"
 export default function SettingsAccountPage() {
   const { clearSession } = useClearSession()
   const { t } = useTranslation()
-  const [connection, setConnection] = useState({})
+  const [connection, setConnection] = useState<Connection | null>(null)
   const token = useAuthStore((state) => state.token)
   const country = useAuthStore((state) => state.country)
   const accountId = useAuthStore((state) => state.accountId)
