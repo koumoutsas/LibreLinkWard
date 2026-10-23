@@ -8,28 +8,25 @@ import {
   sendRefreshPrimaryWindow,
   sendRefreshAllWindows,
 } from '@/lib/utils';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
+import { usePatients } from '@/hooks/usePatients';
 
 export default function SettingsAlertPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { patients } = usePatients();
 
   const {
     bringToFrontEnabled,
     flashWindowEnabled,
     audioAlertEnabled,
     useCustomSound,
-    overrideThreshold,
-    customTargetHigh,
-    customTargetLow,
 
     setBringToFrontEnabled,
     setFlashWindowEnabled,
     setAudioAlertEnabled,
     setUserCustomSoundEnabled,
-    setOverrideThreshold,
-    setCustomTargetLow,
-    setCustomTargetHigh,
   } = useAlertStore();
 
   const handleBringToFrontChange = (checked: boolean) => {
@@ -46,22 +43,6 @@ export default function SettingsAlertPage() {
 
   const handleUserCustomSoundChange = (checked: boolean) => {
     setUserCustomSoundEnabled(checked);
-  };
-
-  const handleOverrideChange = (checked: boolean) => {
-    setOverrideThreshold(checked);
-  };
-
-  const handleTargetLowChanged = (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    setCustomTargetLow(Number(event.target.value));
-  };
-
-  const handleTargetHighChanged = (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    setCustomTargetHigh(Number(event.target.value));
   };
 
   const handleApplyChanges = () => {
@@ -145,40 +126,19 @@ export default function SettingsAlertPage() {
           </div>
         )}
 
-        <div className="flex flex-row justify-between gap-4">
-          <p className="text-gray-400">{t('Custom Alert Level')}</p>
-          <ToggleSwitch
-            checked={overrideThreshold}
-            onChange={handleOverrideChange}
-          />
+        <div className="space-y-2" data-testid="patient-alarm-links">
+          <p className="text-gray-400">{t('Per-patient alarm levels')}</p>
+          {patients.map((p) => (
+            <Button
+              key={p.patientId}
+              variant="outline"
+              className="w-full justify-start"
+              onClick={() => navigate(`/settings/patients/${p.patientId}`)}
+            >
+              {p.name}
+            </Button>
+          ))}
         </div>
-
-        {overrideThreshold && (
-          <div className="flex flex-row justify-start gap-4">
-            <div>
-              <p className="text-foreground/30 text-xs mb-2">
-                {t('Min Value')} ({t('mg/dL')})
-              </p>
-              <Input
-                type="number"
-                placeholder={t('Enter Value')}
-                value={String(customTargetLow)}
-                onChange={handleTargetLowChanged}
-              />
-            </div>
-            <div>
-              <p className="text-foreground/30 text-xs mb-2">
-                {t('Max Value')} ({t('mg/dL')})
-              </p>
-              <Input
-                type="number"
-                placeholder={t('Enter Value')}
-                value={String(customTargetHigh)}
-                onChange={handleTargetHighChanged}
-              />
-            </div>
-          </div>
-        )}
 
         <div>
           <Button onClick={handleApplyChanges}>{t('Apply Changes')}</Button>

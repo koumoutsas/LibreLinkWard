@@ -51,6 +51,9 @@ export const registerPollingHandler = () => {
   ipcMain.handle('alarms:set', (_e, patientId: string, patch: Partial<AlarmConfig>) =>
     alarmStore.getState().setConfig(patientId, patch),
   )
+  ipcMain.handle('alarms:reset', (_e, patientId: string) =>
+    alarmStore.getState().resetConfig(patientId),
+  )
   ipcMain.on('logout', () => service!.signOut())
 
   service.startIfConfigured()
@@ -60,7 +63,7 @@ export const destroyPollingHandler = () => {
   service?.stop()
   unsubscribe.forEach((u) => u())
   unsubscribe = []
-  ;['linkup:sign-in', 'linkup:get-state', 'alarms:get', 'alarms:set'].forEach((c) =>
+  ;['linkup:sign-in', 'linkup:get-state', 'alarms:get', 'alarms:set', 'alarms:reset'].forEach((c) =>
     ipcMain.removeHandler(c),
   )
 }
