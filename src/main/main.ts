@@ -11,6 +11,7 @@ import { registerWindowHandlers, destroyWindowHandlers } from "./windowHandler";
 import { registerLogoutHandler, destroyLogoutHandler } from "./logoutHandler";
 import { registerRefreshHandler, destroyRefreshHandler } from "./refreshHandler";
 import { registerAlertHandler, destroyAlertHandler } from "./alertHandler";
+import { registerPollingHandler, destroyPollingHandler } from "./pollingHandler";
 import { registerTrayHandler, destroyTrayHandler, setTrayMainWindow } from "./trayHandler";
 import { destroyTray } from './../renderer/lib/trayManager';
 
@@ -113,6 +114,7 @@ const createWindow = async () => {
 
   app.on('before-quit', () => {
    isQuitting = true;
+   destroyPollingHandler();
   });
 
   const menuBuilder = new MenuBuilder(mainWindow)
@@ -209,6 +211,8 @@ app.on('window-all-closed', () => {
 app
   .whenReady()
   .then(() => {
+    // safeStorage is only usable once the app is ready
+    registerPollingHandler()
     createWindow()
     app.on('activate', () => {
       // On macOS it's common to re-create a window in the app when the

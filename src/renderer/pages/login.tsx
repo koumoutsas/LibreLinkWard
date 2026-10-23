@@ -76,6 +76,12 @@ export default function LoginPage() {
         const accountId = authData?.accountId || ''
         const accountCountry = authData?.accountCountry || values.country
         login(token, accountCountry, values.language, accountId)
+        // Main process owns polling and the encrypted credentials.
+        await window.electron.ipcRenderer.invoke('linkup:sign-in', {
+          country: accountCountry,
+          username: values.username,
+          password: values.password,
+        })
         navigate('/dashboard')
       } else if (authData?.error) {
         if (authData.error === 4) {
