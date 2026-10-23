@@ -20,7 +20,10 @@
     "start:main": "cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true webpack --config ./.erb/configs/webpack.config.main.dev.ts && electronmon .",
     "start:preload": "cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true webpack --config ./.erb/configs/webpack.config.preload.dev.ts",
     "start:renderer": "cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true webpack serve --config ./.erb/configs/webpack.config.renderer.dev.ts",
-    "test": "jest"
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "package:dir": "npm run build && electron-builder build --dir --publish never",
+    "test:e2e": "playwright test"
   },
   "browserslist": [],
   "prettier": {
@@ -58,13 +61,30 @@
     "setupFiles": [
       "./.erb/scripts/check-build-exists.ts"
     ],
+    "collectCoverageFrom": [
+      "src/shared/**/*.ts",
+      "src/main/{alarmService,pollingService,credentialStore}.ts",
+      "src/main/nightscout/*.ts",
+      "src/renderer/lib/glucose.ts",
+      "!**/__tests__/**"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "statements": 90,
+        "branches": 80,
+        "functions": 90,
+        "lines": 90
+      }
+    },
     "testEnvironment": "jsdom",
     "testEnvironmentOptions": {
       "url": "http://localhost/"
     },
     "testPathIgnorePatterns": [
       "release/app/dist",
-      ".erb/dll"
+      ".erb/dll",
+      "/__tests__/helpers/",
+      "<rootDir>/e2e/"
     ],
     "transform": {
       "\\.(ts|tsx|js|jsx)$": [
@@ -109,6 +129,7 @@
     "@electron/notarize": "^2.5.0",
     "@electron/packager": "^18.3.6",
     "@electron/rebuild": "^3.7.1",
+    "@playwright/test": "^1.64.1",
     "@pmmmwh/react-refresh-webpack-plugin": "^0.5.15",
     "@svgr/webpack": "^8.1.0",
     "@teamsupercell/typings-for-css-modules-loader": "^2.5.2",

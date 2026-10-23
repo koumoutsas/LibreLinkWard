@@ -16,8 +16,10 @@ Workflow: commit and push after each finished piece of work; update this file.
 
 - [x] Step 6: `src/main/nightscout/` (`payload.ts` sgv entry + SHA1 api-secret + trend mapping; `client.ts` API v1 test/latest/upload with injectable http; `configStore.ts` per-patient config encrypted via safeStorage, `nightscout.bin`; `uploader.ts` watches patientStore, resumes after Nightscout's newest entry (dedupe), serialises per patient, exponential backoff retry from the same watermark, re-syncs when URL/secret change). IPC `nightscout:get` (secret never returned, only `hasSecret`), `nightscout:set`, `nightscout:test`; push `nightscout:changed`. UI: `NightscoutSettings` card on the per-patient settings page (off by default, test button, last upload / error). 83 tests green, both bundles build.
 
+- [x] Step 7: `src/__tests__/integration.test.ts` drives sign-in -> polling -> patient store -> alarm service -> Nightscout uploader against real HTTP mock servers (`src/__tests__/helpers/mockServers.ts`, plain node `http`, no new deps): 3 patients with per-patient alarms, bad password, 401 re-login, Nightscout dedupe/no duplicates, outage retry, wrong secret. Coverage gate in the jest config (90/80/90/90 global over shared + main logic + glucose helpers; currently ~97/86/97/98), `npm run test:coverage`. RTL tests for the dashboard and graph tooltip already existed (step 4). Playwright e2e smoke (`e2e/smoke.spec.ts`, `npm run package:dir` then `npm run test:e2e`) launches the packaged app and checks the login screen. 89 jest tests + 1 e2e green.
+
 ## Known issues / notes
-- Nightscout: uploads only what is in the 12 h in-memory history, so an outage longer than that loses readings; API v3 not evaluated; labels hardcoded English; no mock-Nightscout integration test yet (step 7); logout keeps Nightscout configs.
+- Nightscout: uploads only what is in the 12 h in-memory history, so an outage longer than that loses readings; API v3 not evaluated; labels hardcoded English; logout keeps Nightscout configs.
 - Old `useGlucoseAlerts` hook is now dead code (superseded by the alarm engine); `alertStore` still holds the bring-to-front/flash/sound toggles. Snooze applies to all kinds incl. urgent low (no bypass). Alarm sound/flash is triggered by the renderer, so a renderer window must exist (hidden-to-tray is fine). Tray number follows a patient only when exactly one is shared. Overlay/compact window mode UI was dropped from the dashboard.
 - Settings labels added in step 4 are hardcoded English (not in i18n files yet).
 - Renderer still holds its own auth token (login gating) alongside main's credentials.
@@ -28,4 +30,5 @@ Workflow: commit and push after each finished piece of work; update this file.
 - README badges still point at upstream (CI/last commit/etc.); update when CI exists.
 
 ## Next
-- [ ] 7 tests (incl. mock LibreLinkUp + mock Nightscout integration, RTL, e2e, coverage gate), 8 CI/CD, 9 docs
+- [ ] 8 CI/CD (run `npm test -- --coverage`, typecheck, `package:dir` + `test:e2e` on each OS), 9 docs
+- e2e only covers launch + login screen: logging in against the mock needs a base-URL override in `getBaseUrl` (both renderer and main use it), deliberately not added to production code. Unpackaged Electron looks for a dev-only preload, so e2e must use the packaged app. Electron binary may need `node node_modules/electron/install.js` locally.
