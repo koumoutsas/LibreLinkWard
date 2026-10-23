@@ -59,9 +59,6 @@
       "\\.(css|less|sass|scss)$": "identity-obj-proxy",
       "^@/(.*)$": "<rootDir>/src/renderer/$1"
     },
-    "setupFiles": [
-      "./.erb/scripts/check-build-exists.ts"
-    ],
     "collectCoverageFrom": [
       "src/shared/**/*.ts",
       "src/main/{alarmService,pollingService,credentialStore}.ts",
