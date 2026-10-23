@@ -24,7 +24,7 @@ Workflow: commit and push after each finished piece of work; update this file.
 
 - [x] Step 9 (docs): README rewritten (features, setup, usage, alarms, Nightscout, build matrix), root `CONTRIBUTING.md`, `PRIVACY.md`, CHANGES.md updated; removed upstream Flathub docs and `.github/CONTRIBUTING.md`. All 9 plan steps done; remaining: manual verification (real LibreLinkUp account, local Nightscout, installing the artifacts).
 
-- [x] Dependency audit: removed unused `@diakem/libre-link-up-api-client` (old axios 0.27), `npm audit fix` (no --force). `npm audit --omit=dev`: 11 -> 2 moderate (react-router 6, fix needs v7 major; app uses client-side routing only, no SSR/deserializeErrors). Remaining ~31 total are dev/build tooling. Typecheck, 89 tests, build and e2e green.
+- [x] Dependency audit: removed unused `@diakem/libre-link-up-api-client` (old axios 0.27), `npm audit fix` (no --force). `npm audit --omit=dev`: 11 -> 0 after upgrading react-router-dom to v7 (no code changes needed; jest `setupFiles` polyfills TextEncoder for jsdom). Remaining ~31 total are dev/build tooling. Typecheck, 89 tests, build and e2e green.
 
 ## Known issues / notes
 - Nightscout: uploads only what is in the 12 h in-memory history, so an outage longer than that loses readings; API v3 not evaluated; labels hardcoded English; logout keeps Nightscout configs.
