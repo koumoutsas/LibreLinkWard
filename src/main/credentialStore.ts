@@ -12,8 +12,8 @@ export interface SafeStorageLike {
 /** One LibreLinkUp login. Each login is one view in the UI. */
 export type StoredAccount = Credentials & { id: string }
 
-/** Stable id for a login: the lower-cased username. */
-export const accountIdFor = (username: string) => username.trim().toLowerCase()
+/** Id for a stored login without one (older files): the lower-cased username. */
+const legacyId = (username: string) => username.trim().toLowerCase()
 
 const valid = (a: any): a is Credentials => !!(a?.username && a?.password && a?.country)
 
@@ -44,7 +44,7 @@ export class CredentialStore {
       if (!fs.existsSync(this.file) || !this.safe.isEncryptionAvailable()) return []
       const parsed = JSON.parse(this.safe.decryptString(fs.readFileSync(this.file)))
       const list: unknown[] = Array.isArray(parsed) ? parsed : [parsed]
-      return list.filter(valid).map((a) => ({ ...a, id: accountIdFor(a.username) }))
+      return list.filter(valid).map((a) => ({ ...a, id: (a as any).id || legacyId(a.username) }))
     } catch {
       return []
     }

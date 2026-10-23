@@ -29,7 +29,7 @@ As there is no official API from [Abbott](https://www.freestyle.abbott/), the Li
 2. Sign in with a patient's LibreLinkUp credentials. The operator needs no Libre account of their own.
 3. Press **Add patient** on the dashboard and enter the next patient's credentials. Each login becomes its own view, stacked vertically below the others. Remove a view with **Remove**.
 
-Each login is verified before it is saved, and all logins are polled once a minute. A login that is a follower account with several shared patients shows all of them in its view.
+Each login is verified before it is saved, and all logins are polled once a minute. Adding the same credentials twice creates two independent views (useful for testing); each view has its own alarms and Nightscout settings, so a real deployment should not add a patient twice. A login that is a follower account with several shared patients shows all of them in its view.
 
 ## Usage
 - **Dashboard**: one view per login, each with the patient's value, trend and a 6 h graph (hover for value and time). Click a view for the patient page (3/6/12 h graph, alarms). Views are coloured by that patient's own thresholds.

@@ -22,12 +22,12 @@ describe('CredentialStore', () => {
 
   it('round-trips several logins and never writes a password in plaintext', () => {
     const store = new CredentialStore(file, fakeSafe())
-    const second = { country: 'us', username: 'Pat@Example.com', password: 'other-pw', id: 'pat@example.com' }
-    store.saveAll([{ ...creds, id: 'nurse@example.com' }, second])
+    const second = { country: 'us', username: 'Pat@Example.com', password: 'other-pw', id: 'uuid-2' }
+    store.saveAll([{ ...creds, id: 'uuid-1' }, second])
     const raw = fs.readFileSync(file).toString()
     expect(raw).not.toContain('secret-pw')
     expect(raw).not.toContain('other-pw')
-    expect(store.loadAll()).toEqual([{ ...creds, id: 'nurse@example.com' }, second])
+    expect(store.loadAll()).toEqual([{ ...creds, id: 'uuid-1' }, second])
   })
 
   it('reads the older single-login file format', () => {

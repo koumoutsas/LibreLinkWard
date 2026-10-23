@@ -51,8 +51,8 @@ describe('PollingService', () => {
     const { service, patients } = setup(client, [stored1])
     expect(service.startIfConfigured()).toBe(true)
     await flush()
-    expect(Object.keys(patients.getState().patients).sort()).toEqual(['p1', 'p2'])
-    expect(patients.getState().patients.p1.latest?.ValueInMgPerDl).toBe(100)
+    expect(Object.keys(patients.getState().patients).sort()).toEqual(['u~p1', 'u~p2'])
+    expect(patients.getState().patients['u~p1'].latest?.ValueInMgPerDl).toBe(100)
     expect(service.getStatus()).toBe('running')
     service.stop()
   })
@@ -61,7 +61,7 @@ describe('PollingService', () => {
     const client = okClient()
     const { service, credentials, patients } = setup(client)
     await expect(service.signIn({ ...creds, country: 'global' })).resolves.toEqual({ ok: true })
-    expect(credentials.saveAll).toHaveBeenCalledWith([{ ...creds, country: 'de', id: 'u' }])
+    expect(credentials.saveAll).toHaveBeenCalledWith([{ ...creds, country: 'de', id: expect.any(String) }])
     await flush()
     expect(Object.keys(patients.getState().patients)).toHaveLength(2)
     service.stop()
@@ -95,8 +95,8 @@ describe('PollingService', () => {
     const { service, patients } = setup(client, [stored1])
     service.startIfConfigured()
     await flush()
-    expect(patients.getState().patients.p1.status).toBe('ok')
-    expect(patients.getState().patients.p2).toMatchObject({ status: 'error', lastError: 'down' })
+    expect(patients.getState().patients['u~p1'].status).toBe('ok')
+    expect(patients.getState().patients['u~p2']).toMatchObject({ status: 'error', lastError: 'down' })
     service.stop()
   })
 
@@ -120,56 +120,73 @@ describe('PollingService', () => {
     })
     const clients: Record<string, any> = { ann: clientFor('pa', 'Ann'), bob: clientFor('pb', 'Bob') }
     const byUser = (c: any) => clients[c.username]
+    const add = (service: PollingService, username: string, password = 'p') =>
+      service.signIn({ country: 'eu', username, password })
+    const idOf = (service: PollingService, username: string) =>
+      service.getAccounts().find((a) => a.username === username)!.id
 
     it('keeps each login\'s patients side by side', async () => {
-      const { service, credentials, patients } = setup(null, [], byUser)
-      await service.signIn({ country: 'eu', username: 'ann', password: 'p' })
-      await service.signIn({ country: 'eu', username: 'bob', password: 'p' })
+      const { service, patients } = setup(null, [], byUser)
+      await add(service, 'ann')
+      await add(service, 'bob')
       await flush()
-      expect(Object.keys(patients.getState().patients).sort()).toEqual(['pa', 'pb'])
-      expect(patients.getState().patients.pa.accountId).toBe('ann')
-      expect(patients.getState().patients.pb.accountId).toBe('bob')
-      expect(service.getAccounts().map((a) => a.id)).toEqual(['ann', 'bob'])
+      const [ann, bob] = [idOf(service, 'ann'), idOf(service, 'bob')]
+      expect(Object.keys(patients.getState().patients).sort()).toEqual([`${ann}~pa`, `${bob}~pb`].sort())
+      expect(patients.getState().patients[`${ann}~pa`].accountId).toBe(ann)
+      service.stop()
+    })
+
+    it('adding the same credentials twice makes two independent views', async () => {
+      const { service, credentials, patients } = setup(null, [], byUser)
+      await add(service, 'ann')
+      await add(service, 'ann')
+      await flush()
+      const accounts = service.getAccounts()
+      expect(accounts).toHaveLength(2)
+      expect(accounts[0].id).not.toBe(accounts[1].id)
       expect(credentials.saveAll).toHaveBeenLastCalledWith([
-        expect.objectContaining({ id: 'ann' }),
-        expect.objectContaining({ id: 'bob' }),
+        expect.objectContaining({ username: 'ann' }),
+        expect.objectContaining({ username: 'ann' }),
       ])
+      expect(Object.keys(patients.getState().patients)).toHaveLength(2)
       service.stop()
     })
 
-    it('adding the same login again replaces it instead of duplicating', async () => {
-      const { service, credentials } = setup(null, [], byUser)
-      await service.signIn({ country: 'eu', username: 'ann', password: 'old' })
-      await service.signIn({ country: 'eu', username: 'ann', password: 'new' })
-      expect(service.getAccounts()).toHaveLength(1)
-      expect(credentials.saveAll).toHaveBeenLastCalledWith([expect.objectContaining({ id: 'ann', password: 'new' })])
-      service.stop()
-    })
-
-    it('removeAccount drops only that login and its patients', async () => {
+    it('removeAccount drops only that view and its patients', async () => {
       const { service, credentials, patients } = setup(null, [], byUser)
-      await service.signIn({ country: 'eu', username: 'ann', password: 'p' })
-      await service.signIn({ country: 'eu', username: 'bob', password: 'p' })
+      await add(service, 'ann')
+      await add(service, 'ann')
+      await add(service, 'bob')
       await flush()
-      service.removeAccount('ann')
-      expect(Object.keys(patients.getState().patients)).toEqual(['pb'])
-      expect(service.getAccounts().map((a) => a.id)).toEqual(['bob'])
-      expect(credentials.saveAll).toHaveBeenLastCalledWith([expect.objectContaining({ id: 'bob' })])
+      const first = service.getAccounts()[0].id
+      service.removeAccount(first)
+      expect(service.getAccounts()).toHaveLength(2)
+      expect(Object.keys(patients.getState().patients)).toHaveLength(2)
+      expect(Object.keys(patients.getState().patients).some((k) => k.startsWith(first))).toBe(false)
+      expect(credentials.saveAll).toHaveBeenLastCalledWith([
+        expect.objectContaining({ username: 'ann' }),
+        expect.objectContaining({ username: 'bob' }),
+      ])
       expect(service.getStatus()).toBe('running')
-      service.removeAccount('bob')
-      expect(service.getStatus()).toBe('signed-out')
       service.stop()
+    })
+
+    it('removing the last view signs out', async () => {
+      const { service } = setup(null, [], byUser)
+      await add(service, 'ann')
+      service.removeAccount(service.getAccounts()[0].id)
+      expect(service.getStatus()).toBe('signed-out')
     })
 
     it('a failing login does not stop the other one', async () => {
       clients.bad = { ...clientFor('pc', 'Cy'), getConnections: jest.fn().mockRejectedValue(new LinkUpError('no', 'auth', 401)) }
       const { service, patients } = setup(null, [], byUser)
-      await service.signIn({ country: 'eu', username: 'ann', password: 'p' })
-      await service.signIn({ country: 'eu', username: 'bad', password: 'p' })
+      await add(service, 'ann')
+      await add(service, 'bad')
       await flush()
-      expect(service.getAccounts().find((a) => a.id === 'bad')?.status).toBe('auth-error')
-      expect(service.getAccounts().find((a) => a.id === 'ann')?.status).toBe('running')
-      expect(patients.getState().patients.pa).toBeDefined()
+      expect(service.getAccounts().find((a) => a.username === 'bad')?.status).toBe('auth-error')
+      expect(service.getAccounts().find((a) => a.username === 'ann')?.status).toBe('running')
+      expect(Object.keys(patients.getState().patients)).toHaveLength(1)
       service.stop()
     })
   })

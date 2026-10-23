@@ -49,6 +49,7 @@ describe('polling -> store -> alarm -> Nightscout (mock servers)', () => {
       patients,
       createClient: (c) => new LinkUpClient({ credentials: c, http: llu.http }),
       intervalMs: 3_600_000,
+      newId: () => 'v',
     })
     alarmService.start()
     stops.push(() => alarmService.stop(), () => polling.stop())
@@ -58,20 +59,20 @@ describe('polling -> store -> alarm -> Nightscout (mock servers)', () => {
   it('signs in, loads every patient and raises per-patient alarms', async () => {
     const { patients, notes, alarmService, polling, credentials } = build()
     await expect(polling.signIn(creds)).resolves.toEqual({ ok: true })
-    expect(credentials.saveAll).toHaveBeenCalledWith([{ ...creds, country: 'de', id: creds.username.toLowerCase() }])
+    expect(credentials.saveAll).toHaveBeenCalledWith([{ ...creds, country: 'de', id: 'v' }])
     await waitFor(() => {
       const all = Object.values(patients.getState().patients)
       return all.length === 3 && all.every((p) => p.latest)
     })
 
     const state = patients.getState().patients
-    expect(Object.keys(state).sort()).toEqual(['ann', 'bob', 'cy'])
-    expect(state.ann.history).toHaveLength(3)
-    expect(state.ann.name).toContain('Ann')
+    expect(Object.keys(state).sort()).toEqual(['v~ann', 'v~bob', 'v~cy'])
+    expect(state['v~ann'].history).toHaveLength(3)
+    expect(state['v~ann'].name).toContain('Ann')
 
     const byPatient = Object.fromEntries(notes.map((n) => [n.patientId, n.kind]))
-    expect(byPatient).toEqual({ bob: 'low', cy: 'high' })
-    expect(alarmService.getActive().map((a) => a.patientId).sort()).toEqual(['bob', 'cy'])
+    expect(byPatient).toEqual({ 'v~bob': 'low', 'v~cy': 'high' })
+    expect(alarmService.getActive().map((a) => a.patientId).sort()).toEqual(['v~bob', 'v~cy'])
   })
 
   it('wrong password fails sign-in without polling', async () => {
@@ -84,7 +85,7 @@ describe('polling -> store -> alarm -> Nightscout (mock servers)', () => {
   it('re-logs in transparently after a 401', async () => {
     const { patients, polling } = build()
     await polling.signIn(creds)
-    await waitFor(() => !!patients.getState().patients.ann?.latest)
+    await waitFor(() => !!patients.getState().patients['v~ann']?.latest)
     // Stop the background poller so only the client below talks to the mock.
     polling.stop()
     // Let any request already in flight finish before counting logins.
@@ -103,7 +104,7 @@ describe('polling -> store -> alarm -> Nightscout (mock servers)', () => {
     const { patients, polling } = build()
     const uploader = new NightscoutUploader({ patients, baseBackoffMs: 1, maxBackoffMs: 1 })
     uploader.setConfigs({
-      ann: { enabled: true, url: ns.url, apiSecret: ns.secret, deviceName: 'ward' },
+      'v~ann': { enabled: true, url: ns.url, apiSecret: ns.secret, deviceName: 'ward' },
     })
     uploader.start()
     stops.push(() => uploader.stop())
@@ -121,7 +122,7 @@ describe('polling -> store -> alarm -> Nightscout (mock servers)', () => {
     const { patients, polling } = build()
     ns.state.failPosts = 1
     const uploader = new NightscoutUploader({ patients, baseBackoffMs: 1, maxBackoffMs: 1 })
-    uploader.setConfigs({ ann: { enabled: true, url: ns.url, apiSecret: ns.secret, deviceName: 'ward' } })
+    uploader.setConfigs({ 'v~ann': { enabled: true, url: ns.url, apiSecret: ns.secret, deviceName: 'ward' } })
     uploader.start()
     stops.push(() => uploader.stop())
     await polling.signIn(creds)
@@ -131,17 +132,17 @@ describe('polling -> store -> alarm -> Nightscout (mock servers)', () => {
     await uploader.sync()
     expect(ns.state.posts).toBeGreaterThanOrEqual(2)
     expect(ns.state.entries.map((e) => e.sgv).sort((a, b) => a - b)).toEqual([95, 100, 110])
-    expect(uploader.getStatus('ann').lastError).toBeUndefined()
+    expect(uploader.getStatus('v~ann').lastError).toBeUndefined()
   })
 
   it('reports a wrong Nightscout secret as an error', async () => {
     const { patients, polling } = build()
     const uploader = new NightscoutUploader({ patients })
-    uploader.setConfigs({ ann: { enabled: true, url: ns.url, apiSecret: 'wrong', deviceName: 'd' } })
+    uploader.setConfigs({ 'v~ann': { enabled: true, url: ns.url, apiSecret: 'wrong', deviceName: 'd' } })
     uploader.start()
     stops.push(() => uploader.stop())
     await polling.signIn(creds)
-    await waitFor(() => !!uploader.getStatus('ann').lastError)
+    await waitFor(() => !!uploader.getStatus('v~ann').lastError)
     expect(ns.state.entries).toHaveLength(0)
   })
 })

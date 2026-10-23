@@ -1,6 +1,7 @@
 import { Connection, Credentials, GraphResult, LinkUpClient, LinkUpError, Poller } from '../shared/linkup'
 import type { PatientStore } from '../shared/stores'
-import { CredentialStore, StoredAccount, accountIdFor } from './credentialStore'
+import { randomUUID } from 'crypto'
+import { CredentialStore, StoredAccount } from './credentialStore'
 
 export type ServiceStatus = 'signed-out' | 'running' | 'auth-error'
 
@@ -16,7 +17,16 @@ export type PollingServiceDeps = {
   onStatus?: (status: ServiceStatus) => void
   createClient?: (credentials: Credentials) => LinkUpClient
   intervalMs?: number
+  /** Id generator for new logins; injectable for tests. */
+  newId?: () => string
 }
+
+/**
+ * Store key of a patient as seen through one login. The same patient reached
+ * through two logins (or the same login added twice) is two independent views,
+ * each with its own alarms and Nightscout settings.
+ */
+export const viewKey = (accountId: string, patientId: string) => `${accountId}~${patientId}`
 
 /**
  * Owns one LibreLinkUp client + poller per login in the main process and
@@ -55,7 +65,7 @@ export class PollingService {
 
   /**
    * Verifies the credentials with a real login, then stores them and polls.
-   * Adding a login that already exists replaces it.
+   * Every call adds a new view, even for credentials that were added before.
    */
   async signIn(credentials: Credentials): Promise<{ ok: true } | { ok: false; error: string; status?: number }> {
     const client = this.createClient(credentials)
@@ -69,10 +79,9 @@ export class PollingService {
         status: e instanceof LinkUpError ? e.status : undefined,
       }
     }
-    const account: StoredAccount = { ...credentials, country, id: accountIdFor(credentials.username) }
+    const account: StoredAccount = { ...credentials, country, id: (this.deps.newId ?? randomUUID)() }
     try {
-      const others = [...this.accounts.values()].filter((a) => a.id !== account.id)
-      this.deps.credentials.saveAll([...others, account])
+      this.deps.credentials.saveAll([...this.accounts.values(), account])
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) }
     }
@@ -112,8 +121,12 @@ export class PollingService {
     const poller = new Poller({
       client,
       intervalMs: this.deps.intervalMs,
-      onConnections: (c: Connection[]) => store.applyConnections(c, account.id),
-      onUpdate: (id: string, graph: GraphResult) => store.applyGraph(id, graph),
+      onConnections: (c: Connection[]) =>
+        store.applyConnections(
+          c.map((x) => ({ ...x, patientId: viewKey(account.id, x.patientId) })),
+          account.id,
+        ),
+      onUpdate: (id: string, graph: GraphResult) => store.applyGraph(viewKey(account.id, id), graph),
       onError: (error, patientId) => this.handleError(account.id, error, patientId),
     })
     this.pollers.set(account.id, poller)
@@ -132,7 +145,7 @@ export class PollingService {
     if (patientId) {
       this.deps.patients
         .getState()
-        .setError(patientId, error instanceof Error ? error.message : String(error))
+        .setError(viewKey(accountId, patientId), error instanceof Error ? error.message : String(error))
     }
   }
 
