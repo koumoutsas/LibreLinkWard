@@ -20,6 +20,8 @@ Workflow: commit and push after each finished piece of work; update this file.
 
 - [x] Step 8 (CI): fixed all 7 `tsc` errors (`src/main/electron-augment.d.ts` for `isPrimary`, typed `this` in main.ts, toggle-switch prop types, tray `destroyed` cast); `npm run typecheck`. New `.github/workflows/ci.yml`: ubuntu/macos/windows matrix running typecheck, lint (advisory), `test:coverage` (gate), then `package:dir` + Playwright smoke (Linux e2e non-blocking, uses xvfb + `--no-sandbox`). Removed Codacy workflow (needs upstream token), README badges now point at this fork. Release workflow (`build-and-release.yml`) already builds dmg arm64/x64, msi/nsis, AppImage/deb on tags; mac notarization hook skips unless `APPLE_ID`/`APPLE_ID_PASS` secrets exist. Not yet verified on GitHub runners: see Known issues.
 
+- Self-hosted macOS runner: `~/actions-runner-librelinkward` (label `librelinkward-mac`, started by hand with `./run.sh`, not a service). `ci.yml` uses it for the macOS legs on `push` only; PRs use hosted runners. If it is offline, macOS jobs on push queue until it is started.
+
 ## Known issues / notes
 - Nightscout: uploads only what is in the 12 h in-memory history, so an outage longer than that loses readings; API v3 not evaluated; labels hardcoded English; logout keeps Nightscout configs.
 - Old `useGlucoseAlerts` hook is now dead code (superseded by the alarm engine); `alertStore` still holds the bring-to-front/flash/sound toggles. Snooze applies to all kinds incl. urgent low (no bypass). Alarm sound/flash is triggered by the renderer, so a renderer window must exist (hidden-to-tray is fine). Tray number follows a patient only when exactly one is shared. Overlay/compact window mode UI was dropped from the dashboard.

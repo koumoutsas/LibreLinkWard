@@ -14,7 +14,10 @@ concurrency:
 jobs:
   check:
     name: Typecheck, lint, test (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
+    # macOS runs on the maintainer's self-hosted Mac for pushes (hosted macOS
+    # capacity is unreliable). Pull requests always use GitHub-hosted runners so
+    # untrusted fork code never runs on that machine.
+    runs-on: ${{ (matrix.os == 'macos-latest' && github.event_name == 'push') && fromJSON('["self-hosted","librelinkward-mac"]') || matrix.os }}
     strategy:
       fail-fast: false
       matrix:
@@ -42,7 +45,10 @@ jobs:
   e2e:
     name: E2E smoke (${{ matrix.os }})
     needs: check
-    runs-on: ${{ matrix.os }}
+    # macOS runs on the maintainer's self-hosted Mac for pushes (hosted macOS
+    # capacity is unreliable). Pull requests always use GitHub-hosted runners so
+    # untrusted fork code never runs on that machine.
+    runs-on: ${{ (matrix.os == 'macos-latest' && github.event_name == 'push') && fromJSON('["self-hosted","librelinkward-mac"]') || matrix.os }}
     # Linux is best-effort (not a primary target).
     continue-on-error: ${{ matrix.os == 'ubuntu-latest' }}
     strategy:
