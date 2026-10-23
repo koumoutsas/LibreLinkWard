@@ -30,11 +30,10 @@ should include those executables:
 - deb
 - MSI
 - EXE
-- AppX (Windows Store)
 - portable
 - pkg
 
-The ```version``` in the ```package.json```, ```/release/app/package.json```, ```snap/gui/librelinkupdesktop.desktop```, ```snapcraft.yaml``` and ```flathub/rocks.poopjournal.librelinkupdesktop.metainfo.xml``` need to be
+The ```version``` in the ```package.json```, and ```/release/app/package.json``` need to be
 increased ([example PR](https://github.com/Crazy-Marvin/LibreLinkUpDesktop/pull/523/changes)) following the rules of [Semantic Versioning](https://semver.org/).
 
 ## Customizing the application
@@ -42,20 +41,6 @@ increased ([example PR](https://github.com/Crazy-Marvin/LibreLinkUpDesktop/pull/
 - Localization is located on `src/renderer/i18n` folder.
 - App configuration can be found on `src/renderer/config` folder
 
-## Store releases
+## Releases
 
-We officially support three stores:
-
-- **[Flathub](https://flathub.org/apps/rocks.poopjournal.librelinkupdesktop)**
-
-  [Releasing Guide](./UPDATING-FLATHUB-RELEASE.md)
-
-- **[Snapcraft](https://snapcraft.io/librelinkupdesktop)**
-
-  To release a new update, modify the version string in the `snapcraft.yaml` file (both in the version key and the electron-packager command).
-  
-- **[Microsoft Store](https://www.microsoft.com/store/apps/9N5RKKLQM5C9)**
-
-  TBD
-
-Note: Other (unofficial) releases might be done by the community. Please let us know by commenting in issue [#253](https://github.com/Crazy-Marvin/LibreLinkUpDesktop/issues/253) just so we know about it.  
+Push a version tag; `build-and-release.yml` publishes installers to GitHub Releases. No app store distribution is maintained.

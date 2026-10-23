@@ -22,6 +22,8 @@ Workflow: commit and push after each finished piece of work; update this file.
 
 - Self-hosted macOS runner: `~/actions-runner-librelinkward` (label `librelinkward-mac`, launchd service `actions.runner.koumoutsas-LibreLinkWard.macbook-mac` (LaunchAgent, starts at login; stop with `./svc.sh stop`)). `ci.yml` uses it for the macOS legs on `push` only; PRs use hosted runners. If it is offline (e.g. not logged in), macOS jobs on push queue.
 
+- [x] Step 9 (docs): README rewritten (features, setup, usage, alarms, Nightscout, build matrix), root `CONTRIBUTING.md`, `PRIVACY.md`, CHANGES.md updated; removed upstream Flathub docs and `.github/CONTRIBUTING.md`. All 9 plan steps done; remaining: manual verification (real LibreLinkUp account, local Nightscout, installing the artifacts).
+
 ## Known issues / notes
 - Nightscout: uploads only what is in the 12 h in-memory history, so an outage longer than that loses readings; API v3 not evaluated; labels hardcoded English; logout keeps Nightscout configs.
 - Old `useGlucoseAlerts` hook is now dead code (superseded by the alarm engine); `alertStore` still holds the bring-to-front/flash/sound toggles. Snooze applies to all kinds incl. urgent low (no bypass). Alarm sound/flash is triggered by the renderer, so a renderer window must exist (hidden-to-tray is fine). Tray number follows a patient only when exactly one is shared. Overlay/compact window mode UI was dropped from the dashboard.
@@ -35,6 +37,6 @@ Workflow: commit and push after each finished piece of work; update this file.
 - Release workflow has no signing certs for mac/win (unsigned builds); Weblate/Snyk badges removed.
 
 ## Next
-- [x] CI verified green on all 3 OSes (check + e2e), run 39985031210. 9 docs is next.
-- [ ] 9 docs (README setup/usage/alarms/Nightscout/build matrix, CONTRIBUTING, privacy note)
+- [x] CI verified green on all 3 OSes (check + e2e), run 39985031210.
+- Remaining: manual verification (real multi-patient account, local Nightscout, install the artifacts).
 - e2e only covers launch + login screen: logging in against the mock needs a base-URL override in `getBaseUrl` (both renderer and main use it), deliberately not added to production code. Unpackaged Electron looks for a dev-only preload, so e2e must use the packaged app. Electron binary may need `node node_modules/electron/install.js` locally.

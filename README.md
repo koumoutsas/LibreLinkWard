@@ -16,22 +16,51 @@ It is a fork of [LibreLinkUpDesktop](https://github.com/Crazy-Marvin/LibreLinkUp
 Under the hood, [Electron](https://www.electronjs.org/) is used with [TypeScript](https://www.typescriptlang.org/) and [React](https://react.dev/).
 As there is no official API from [Abbott](https://www.freestyle.abbott/), the LibreLinkUp API is used directly, following the approach of the [client from DiaKEM](https://github.com/DiaKEM/libre-link-up-api-client).
 
-#### Features of LibreLinkUpDesktop:
-- Show blood glucose level on your desktop in a little window
-- No tracking
-- Dark Mode
-- Libre software
-- That's it. 🩸
+## Features
+- Monitor **several patients** at once: one card per LibreLinkUp connection with value, trend, 3 h sparkline and "x min ago".
+- Patient page with a 3/6/12 h graph, target band and hover tooltip (value, unit, time).
+- **Per-patient alarms**: urgent low / low / high / urgent high and signal loss, with acknowledge and snooze. The banner names the patient.
+- Optional, per-patient **Nightscout upload** (off by default).
+- Credentials stored with the OS keychain (Electron `safeStorage`); no tracking. See [PRIVACY.md](PRIVACY.md).
+- mg/dL and mmol/L, dark mode.
 
-### Instructions:
-  - As sharing person, open your [Libre smartphone app](https://play.google.com/store/apps/details?id=com.freestylelibre3.app.de), go to _Connected Apps_, click on _Manage_ next to LibreLinkUp, click on _Add connection_ and input the details for the account you wish to use with LibreLinkUpDesktop.
-  - Save those credentials inside your password manager. You may use them for yourself or you may share them with someone.
-  - Start LibreLinkUpDesktop and enter those credentials.
-  - That's it. ☺️
- 
-  Let me know about any issues by opening a new [issue on GitHub](https://github.com/Crazy-Marvin/LibreLinkUpDesktop/issues) or commenting on an existing issue if there is one already.
+## Setup
+1. As the sharing person, open the Libre app, go to _Connected Apps_ > _LibreLinkUp_ > _Manage_ > _Add connection_ and invite the account you will use here. Repeat for every patient you follow (nurses: use one LibreLinkUp account that every patient invites).
+2. Install LibreLinkWard from [GitHub Releases](https://github.com/koumoutsas/LibreLinkWard/releases). Builds are **unsigned**, so macOS asks you to allow it in _System Settings > Privacy & Security_ and Windows SmartScreen shows a warning.
+3. Sign in with the LibreLinkUp credentials. All connected patients appear on the dashboard and are polled once a minute.
 
-  Download the installers for macOS, Windows and Linux from [GitHub Releases](https://github.com/koumoutsas/LibreLinkWard/releases) and run them directly; no app store builds exist.
+## Usage
+- **Dashboard**: click a card for the patient page. Cards are coloured by that patient's own thresholds.
+- **Settings > Alerts** lists patients; open one to edit its alarms.
+
+### Alarms
+Each patient has their own configuration. Defaults: urgent low 55, low = sensor target low (70), high = sensor target high (180), urgent high 250 mg/dL; signal loss after 20 min. Thresholds are shown in your chosen unit.
+
+- Hysteresis of 5 mg/dL before an alarm clears; it repeats every 5 min until acknowledged; moving to a more severe level notifies again.
+- **Acknowledge** silences the current alarm. **Snooze** (15/30/60 min) suppresses all alarms for that patient, **including urgent low**.
+- Sound and window flash are triggered by the app window, so keep the app running (hidden to the tray is fine). Alarm snoozes are not kept across restarts.
+
+### Nightscout (optional)
+In a patient's settings, enable Nightscout and enter the URL, API secret and a device name, then press _Test_. New readings are uploaded via API v1 (`POST /api/v1/entries`), resuming after Nightscout's newest entry so nothing is duplicated, and retried with backoff on failure. Only readings still in the app's 12 h memory can be uploaded, so an outage longer than 12 h loses data. The secret is stored encrypted and never shown again.
+
+## Build
+Requires Node 20+. `npm install --legacy-peer-deps`
+
+| Command | Purpose |
+|---|---|
+| `npm start` | development |
+| `npm test` / `npm run test:coverage` | unit + integration tests (coverage gate) |
+| `npm run typecheck` | TypeScript check |
+| `npm run package:dir` then `npm run test:e2e` | packaged app + Playwright smoke test |
+| `npm run package` | installer for the current OS |
+
+| OS | Artifacts | CI |
+|---|---|---|
+| macOS | dmg (arm64, x64) | blocking |
+| Windows | nsis `-setup.exe`, msi | blocking |
+| Linux | AppImage, deb | best effort (e2e non-blocking) |
+
+CI (`.github/workflows/ci.yml`) runs typecheck, tests with coverage and a packaged-app smoke test on all three systems. Pushing a tag runs `build-and-release.yml`. macOS notarization only runs if the `APPLE_ID` / `APPLE_ID_PASS` secrets are set; there is no code signing for macOS or Windows yet.
 
 # Screenshots
 
@@ -41,16 +70,7 @@ Login | Main Screen | Settings
 
 # Contributing
 
-The ```development``` or a feature branch is used while developing the code, and pushed into the master branch ```trunk``` afterwards for releases.
-PRs to the ```trunk``` need at least one approving review before getting merged.
-
-Help translate the app at [Hosted Weblate](https://hosted.weblate.org/engage/librelinkupdesktop/).
-
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
-
-Please make sure to update tests as appropriate.
-
-Check out the [contribution guidelines](https://github.com/Crazy-Marvin/LibreLinkUpDesktop/blob/trunk/.github/CONTRIBUTING.md) for details please.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Privacy: [PRIVACY.md](PRIVACY.md).
 
 # Acknowledgements
 
