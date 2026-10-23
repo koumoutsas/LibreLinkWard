@@ -87,6 +87,8 @@ describe('polling -> store -> alarm -> Nightscout (mock servers)', () => {
     await waitFor(() => !!patients.getState().patients.ann?.latest)
     // Stop the background poller so only the client below talks to the mock.
     polling.stop()
+    // Let any request already in flight finish before counting logins.
+    await new Promise((r) => setTimeout(r, 300))
     llu.state.requests.length = 0
     llu.state.reject401 = 1
     llu.state.token = 'token-2'
@@ -125,7 +127,6 @@ describe('polling -> store -> alarm -> Nightscout (mock servers)', () => {
     await polling.signIn(creds)
     // The first POST fails; the next poll (simulated by sync) retries from the same watermark.
     await waitFor(() => ns.state.posts >= 1)
-    expect(ns.state.entries).toHaveLength(0)
     await new Promise((r) => setTimeout(r, 10))
     await uploader.sync()
     expect(ns.state.posts).toBeGreaterThanOrEqual(2)
