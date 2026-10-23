@@ -23,7 +23,8 @@
     "test": "jest",
     "test:coverage": "jest --coverage",
     "package:dir": "npm run build && electron-builder build --dir --publish never",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "typecheck": "tsc --noEmit --skipLibCheck"
   },
   "browserslist": [],
   "prettier": {

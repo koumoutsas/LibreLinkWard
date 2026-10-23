@@ -331,7 +331,7 @@ class TrayManager {
       this.hideTooltip();
     });
 
-    this.state.tray.on('destroyed', () => {
+    (this.state.tray as NodeJS.EventEmitter).on('destroyed', () => {
       this.state.tray = null;
       this.state.isCreated = false;
       if (this.tooltipWindow) {

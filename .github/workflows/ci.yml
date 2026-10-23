@@ -1,0 +1,67 @@
+name: CI
+on:
+  push:
+    branches: [development, multi-patient]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Typecheck, lint, test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install dependencies
+        run: npm install --prefer-offline --legacy-peer-deps
+      - name: Typecheck
+        run: npm run typecheck
+      # The inherited ESLint setup is still on eslintrc and reports many existing
+      # errors, so lint is advisory until it is cleaned up.
+      - name: Lint (advisory)
+        continue-on-error: true
+        run: npm run lint
+        env:
+          ESLINT_USE_FLAT_CONFIG: 'false'
+      - name: Unit and integration tests with coverage gate
+        run: npm run test:coverage
+
+  e2e:
+    name: E2E smoke (${{ matrix.os }})
+    needs: check
+    runs-on: ${{ matrix.os }}
+    # Linux is best-effort (not a primary target).
+    continue-on-error: ${{ matrix.os == 'ubuntu-latest' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install dependencies
+        run: npm install --prefer-offline --legacy-peer-deps
+      - name: Package unpacked app
+        run: npm run package:dir
+      - name: Run Playwright smoke test (Linux, virtual display)
+        if: runner.os == 'Linux'
+        run: xvfb-run --auto-servernum npm run test:e2e
+      - name: Run Playwright smoke test
+        if: runner.os != 'Linux'
+        run: npm run test:e2e

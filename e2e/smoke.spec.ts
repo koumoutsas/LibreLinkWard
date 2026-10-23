@@ -33,7 +33,7 @@ test('app launches and shows the login screen when signed out', async () => {
   const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'llw-e2e-'))
   const app = await electron.launch({
     executablePath: findExecutable(),
-    args: [`--user-data-dir=${userData}`],
+    args: [`--user-data-dir=${userData}`, ...(process.platform === 'linux' ? ['--no-sandbox'] : [])],
   })
   try {
     const window = await app.firstWindow()

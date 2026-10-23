@@ -18,17 +18,21 @@ Workflow: commit and push after each finished piece of work; update this file.
 
 - [x] Step 7: `src/__tests__/integration.test.ts` drives sign-in -> polling -> patient store -> alarm service -> Nightscout uploader against real HTTP mock servers (`src/__tests__/helpers/mockServers.ts`, plain node `http`, no new deps): 3 patients with per-patient alarms, bad password, 401 re-login, Nightscout dedupe/no duplicates, outage retry, wrong secret. Coverage gate in the jest config (90/80/90/90 global over shared + main logic + glucose helpers; currently ~97/86/97/98), `npm run test:coverage`. RTL tests for the dashboard and graph tooltip already existed (step 4). Playwright e2e smoke (`e2e/smoke.spec.ts`, `npm run package:dir` then `npm run test:e2e`) launches the packaged app and checks the login screen. 89 jest tests + 1 e2e green.
 
+- [x] Step 8 (CI): fixed all 7 `tsc` errors (`src/main/electron-augment.d.ts` for `isPrimary`, typed `this` in main.ts, toggle-switch prop types, tray `destroyed` cast); `npm run typecheck`. New `.github/workflows/ci.yml`: ubuntu/macos/windows matrix running typecheck, lint (advisory), `test:coverage` (gate), then `package:dir` + Playwright smoke (Linux e2e non-blocking, uses xvfb + `--no-sandbox`). Removed Codacy workflow (needs upstream token), README badges now point at this fork. Release workflow (`build-and-release.yml`) already builds dmg arm64/x64, msi/nsis, AppImage/deb on tags; mac notarization hook skips unless `APPLE_ID`/`APPLE_ID_PASS` secrets exist. Not yet verified on GitHub runners: see Known issues.
+
 ## Known issues / notes
 - Nightscout: uploads only what is in the 12 h in-memory history, so an outage longer than that loses readings; API v3 not evaluated; labels hardcoded English; logout keeps Nightscout configs.
 - Old `useGlucoseAlerts` hook is now dead code (superseded by the alarm engine); `alertStore` still holds the bring-to-front/flash/sound toggles. Snooze applies to all kinds incl. urgent low (no bypass). Alarm sound/flash is triggered by the renderer, so a renderer window must exist (hidden-to-tray is fine). Tray number follows a patient only when exactly one is shared. Overlay/compact window mode UI was dropped from the dashboard.
 - Settings labels added in step 4 are hardcoded English (not in i18n files yet).
 - Renderer still holds its own auth token (login gating) alongside main's credentials.
 - `npm install --legacy-peer-deps` required.
-- ts-jest runs transpile-only; `npx tsc --noEmit` shows 7 errors in `src/` (isPrimary on BrowserWindow in main.ts/logoutHandler.ts/refreshHandler.ts, toggle-switch.tsx, trayManager.ts:334). Fix in step 8 (add typecheck to CI).
+- ts-jest runs transpile-only; typecheck is `npm run typecheck` (uses `--skipLibCheck` because nested @types/react duplicates break lib checking).
+- `npm run lint` needs `ESLINT_USE_FLAT_CONFIG=false` (ESLint 9 vs eslintrc) and reports ~153 inherited errors; CI lint is advisory.
 - Alarm snoozes are in-memory only (not persisted) by design.
 - Patient history is in-memory only; rebuilt from graphData on each poll.
-- README badges still point at upstream (CI/last commit/etc.); update when CI exists.
+- Release workflow has no signing certs for mac/win (unsigned builds); Weblate/Snyk badges removed.
 
 ## Next
-- [ ] 8 CI/CD (run `npm test -- --coverage`, typecheck, `package:dir` + `test:e2e` on each OS), 9 docs
+- [ ] Confirm the first CI run is green on GitHub (`gh run list`), fix any OS-specific failures
+- [ ] 9 docs (README setup/usage/alarms/Nightscout/build matrix, CONTRIBUTING, privacy note)
 - e2e only covers launch + login screen: logging in against the mock needs a base-URL override in `getBaseUrl` (both renderer and main use it), deliberately not added to production code. Unpackaged Electron looks for a dev-only preload, so e2e must use the packaged app. Electron binary may need `node node_modules/electron/install.js` locally.

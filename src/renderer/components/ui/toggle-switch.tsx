@@ -44,8 +44,8 @@ const toggleKnobVariants = cva(
 );
 
 interface ToggleSwitchProps {
-  variant?: string;
-  size?: string;
+  variant?: VariantProps<typeof toggleVariants>["variant"];
+  size?: VariantProps<typeof toggleVariants>["size"];
   className?: string;
   leftLabel?: string;
   rightLabel?: string;

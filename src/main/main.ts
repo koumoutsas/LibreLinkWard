@@ -93,11 +93,11 @@ const createWindow = async () => {
 
   })
 
-  mainWindow.on('close', function (event) {
+  mainWindow.on('close', function (this: BrowserWindow, event) {
     if (process.platform === 'darwin' && !isQuitting) {
       event.preventDefault();
       try {
-        (this as BrowserWindow).hide();
+        this.hide();
       } catch {
         // no-op: window may already be tearing down under hot-reload
       }
