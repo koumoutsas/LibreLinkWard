@@ -35,6 +35,6 @@ Workflow: commit and push after each finished piece of work; update this file.
 - Release workflow has no signing certs for mac/win (unsigned builds); Weblate/Snyk badges removed.
 
 ## Next
-- [ ] Confirm the CI run on the latest push is fully green (incl. e2e jobs, which only run once the check job passes). Earlier fixes: Jest `setupFiles` build check removed (tests failed on clean runners); racy 401 integration test now stops the poller first (failed on Windows). The earlier "install stall" was a misread: a push cancelled the run via concurrency.
+- [x] CI verified green on all 3 OSes (check + e2e), run 39985031210. 9 docs is next.
 - [ ] 9 docs (README setup/usage/alarms/Nightscout/build matrix, CONTRIBUTING, privacy note)
 - e2e only covers launch + login screen: logging in against the mock needs a base-URL override in `getBaseUrl` (both renderer and main use it), deliberately not added to production code. Unpackaged Electron looks for a dev-only preload, so e2e must use the packaged app. Electron binary may need `node node_modules/electron/install.js` locally.
