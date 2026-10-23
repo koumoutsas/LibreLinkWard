@@ -1,0 +1,12 @@
+LibreLinkWard
+Copyright 2026 LibreLinkWard contributors
+
+This product is a fork of LibreLinkUpDesktop
+(https://github.com/Crazy-Marvin/LibreLinkUpDesktop),
+Copyright Crazy Marvin & Contributors (especially Yuran Fernando),
+licensed under the Apache License, Version 2.0.
+
+Modifications to the original work are described in CHANGES.md.
+
+The original project builds on the libre-link-up-api-client by DiaKEM
+(https://github.com/DiaKEM/libre-link-up-api-client).

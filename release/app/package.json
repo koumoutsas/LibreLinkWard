@@ -1,12 +1,12 @@
 {
-  "name": "librelinkupdesktop",
+  "name": "librelinkward",
   "version": "0.1.16",
   "description": "This is a desktop application that fetches your blood sugar from LibreLinkUp",
   "license": "Apache-2.0",
   "author": "Crazy Marvin & Contributors (especially Yuran) <marvin@poopjournal.rocks> (https://crazymarvin.com/librelinkupdesktop/)",
-  "homepage": "https://github.com/Crazy-Marvin/LibreLinkUpDesktop",
+  "homepage": "https://github.com/koumoutsas/LibreLinkWard",
     "bugs": {
-    "url": "https://github.com/Crazy-Marvin/LibreLinkUpDesktop/issues",
+    "url": "https://github.com/koumoutsas/LibreLinkWard/issues",
     "email": "marvin@poopjournal.rocks"
   },
     "funding": {

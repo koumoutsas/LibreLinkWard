@@ -106,7 +106,6 @@ jobs:
           name: ubuntu-artifacts-${{ github.run_id }}
           path: |
             release/build/*.deb
-            release/build/*.snap
             release/build/*.AppImage
 
       - name: Add comment with Linux artifacts

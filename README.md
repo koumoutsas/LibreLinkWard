@@ -10,17 +10,16 @@
 [![Translation status](https://hosted.weblate.org/widget/librelinkupdesktop/librelinkupdesktop/svg-badge.svg)](https://hosted.weblate.org/engage/librelinkupdesktop/)
 [![Known Vulnerabilities](https://snyk.io/test/github/Crazy-Marvin/LibreLinkUpDesktop/badge.svg?targetFile=app%2Fbuild.gradle)](https://snyk.io/test/github/Crazy-Marvin/LibreLinkUpDesktop?targetFile=package.json)
 [![Electron](https://img.shields.io/badge/-Electron-blue?logo=electron&?labelColor=white&link=https%3A%2F%2Fwww.electronjs.org%2F)](https://www.electronjs.org/)
-[![Microsoft Store](https://img.shields.io/badge/-Microsoft-blue?logo=microsoft&?labelColor=white&link=https%3A%2F%2Fwww.electronjs.org%2F)](https://www.microsoft.com/store/apps/9N5RKKLQM5C9)
-[![Snap](https://snapcraft.io/librelinkupdesktop/badge.svg)](https://snapcraft.io/librelinkupdesktop)
-[![Flathub](https://img.shields.io/badge/-Flathub-blue?logo=flathub&?labelColor=white&link=https%3A%2F%2Fwww.electronjs.org%2F)](https://flathub.org/apps/rocks.poopjournal.librelinkupdesktop)
 
-# LibreLinkUpDesktop
-This is a desktop application that fetches your blood sugar from [LibreLinkUp](https://librelinkup.com/).
+# LibreLinkWard
+LibreLinkWard is a desktop application for monitoring blood glucose from [LibreLinkUp](https://librelinkup.com/), aimed at nurses and carers who follow **multiple patients** at once.
 
-It works like the official [LibreLinkUp smartphone app](https://play.google.com/store/apps/details?id=org.nativescript.LibreLinkUp) but on desktop clients like [Ubuntu](https://www.ubuntu.com/desktop/) or [Windows](https://www.windows.com/).
+It is a fork of [LibreLinkUpDesktop](https://github.com/Crazy-Marvin/LibreLinkUpDesktop) by Crazy Marvin & Contributors (Apache-2.0). See [Acknowledgements](#acknowledgements) and [CHANGES.md](CHANGES.md).
 
-Under the hood, [Electron](https://www.electronjs.org/) is used with [TypeScript](https://www.typescriptlang.org/) and [Vue.js](https://vuejs.org/).   
-As there is no offical API from [Abbott](https://www.freestyle.abbott/) yet, we use [this awesome client](https://github.com/DiaKEM/libre-link-up-api-client) from DiaKEM.
+> **Disclaimer:** LibreLinkWard is not a medical device and is not affiliated with Abbott. It relies on an unofficial API and must not be the sole means of monitoring a patient.
+
+Under the hood, [Electron](https://www.electronjs.org/) is used with [TypeScript](https://www.typescriptlang.org/) and [React](https://react.dev/).
+As there is no official API from [Abbott](https://www.freestyle.abbott/), the LibreLinkUp API is used directly, following the approach of the [client from DiaKEM](https://github.com/DiaKEM/libre-link-up-api-client).
 
 #### Features of LibreLinkUpDesktop:
 - Show blood glucose level on your desktop in a little window
@@ -37,7 +36,7 @@ As there is no offical API from [Abbott](https://www.freestyle.abbott/) yet, we 
  
   Let me know about any issues by opening a new [issue on GitHub](https://github.com/Crazy-Marvin/LibreLinkUpDesktop/issues) or commenting on an existing issue if there is one already.
 
-  You may download the application from [GitHub Releases](https://github.com/Crazy-Marvin/LibreLinkUpDesktop/releases), [Snapcraft](https://snapcraft.io/librelinkupdesktop/), [Flathub](https://flathub.org/apps/rocks.poopjournal.librelinkupdesktop) or [Microsoft Store](https://www.microsoft.com/store/apps/9N5RKKLQM5C9).
+  Download the installers for macOS, Windows and Linux from [GitHub Releases](https://github.com/koumoutsas/LibreLinkWard/releases) and run them directly; no app store builds exist.
 
 # Screenshots
 
@@ -58,6 +57,10 @@ Please make sure to update tests as appropriate.
 
 Check out the [contribution guidelines](https://github.com/Crazy-Marvin/LibreLinkUpDesktop/blob/trunk/.github/CONTRIBUTING.md) for details please.
 
+# Acknowledgements
+
+LibreLinkWard is built on [LibreLinkUpDesktop](https://github.com/Crazy-Marvin/LibreLinkUpDesktop), created by Crazy Marvin and contributors, especially Yuran Fernando. Thank you for the free software this work stands on.
+
 # License
 
-[Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)
+[Apache License 2.0](LICENSE). See [NOTICE](NOTICE) for attribution.

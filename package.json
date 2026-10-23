@@ -1,5 +1,5 @@
 {
-  "name": "rocks.poopjournal.librelinkupdesktop",
+  "name": "librelinkward",
   "version": "0.1.16",
   "author": {
     "name": "Yuran Fernando",
@@ -52,7 +52,8 @@
     ],
     "moduleNameMapper": {
       "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$": "<rootDir>/.erb/mocks/fileMock.js",
-      "\\.(css|less|sass|scss)$": "identity-obj-proxy"
+      "\\.(css|less|sass|scss)$": "identity-obj-proxy",
+      "^@/(.*)$": "<rootDir>/src/renderer/$1"
     },
     "setupFiles": [
       "./.erb/scripts/check-build-exists.ts"
@@ -66,7 +67,12 @@
       ".erb/dll"
     ],
     "transform": {
-      "\\.(ts|tsx|js|jsx)$": "ts-jest"
+      "\\.(ts|tsx|js|jsx)$": [
+        "ts-jest",
+        {
+          "isolatedModules": true
+        }
+      ]
     }
   },
   "dependencies": {
@@ -105,8 +111,10 @@
     "@pmmmwh/react-refresh-webpack-plugin": "^0.5.15",
     "@svgr/webpack": "^8.1.0",
     "@teamsupercell/typings-for-css-modules-loader": "^2.5.2",
+    "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
+    "@types/crypto-js": "^4.2.2",
     "@types/jest": "^29.5.14",
     "@types/node": "22.10.8",
     "@types/react": "^18.3.18",
@@ -171,8 +179,8 @@
     "webpack-merge": "^6.0.1"
   },
   "build": {
-    "productName": "LibreLinkUpDesktop",
-    "appId": "rocks.poopjournal.librelinkupdesktop",
+    "productName": "LibreLinkWard",
+    "appId": "io.github.koumoutsas.librelinkward",
     "asar": true,
     "asarUnpack": "**\\*.{node,dll}",
     "files": [
@@ -228,13 +236,6 @@
             "x64",
             "ia32"
           ]
-        },
-        {
-          "target": "appx",
-          "arch": [
-            "x64",
-            "ia32"
-          ]
         }
       ],
       "icon": "assets/icon.ico"
@@ -242,7 +243,6 @@
     "linux": {
       "target": [
         "AppImage",
-        "snap",
         "deb"
       ],
       "icon": "assets/icon.icns",
@@ -253,18 +253,13 @@
         "application/x-librelinkup"
       ],
       "desktop": {
-        "Name": "LibreLinkUpDesktop",
+        "Name": "LibreLinkWard",
         "Comment": "Fetches your blood sugar from LibreLinkUp"
       },
       "executableArgs": []
     },
     "appImage": {
       "artifactName": "${productName}-${version}-${arch}.AppImage"
-    },
-    "snap": {
-      "confinement": "strict",
-      "grade": "stable",
-      "artifactName": "${productName}-${version}-${arch}.snap"
     },
     "deb": {
       "artifactName": "${productName}-${version}-${arch}.deb"
@@ -277,20 +272,11 @@
       "installerIcon": "assets/icon.ico",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "LibreLinkUpDesktop"
+      "shortcutName": "LibreLinkWard"
     },
     "msi": {
       "artifactName": "${productName}-${version}-${arch}.msi",
-      "shortcutName": "LibreLinkUpDesktop"
-    },
-    "appx": {
-      "backgroundColor": "#000000",
-      "displayName": "LibreLinkUpDesktop",
-      "applicationId": "LibreLinkUpDesktop",
-      "identityName": "6735CrazyMarvin.LibreLinkUpDesktop",
-      "publisher": "CN=67460285-3F8A-4830-A61B-BAB7004F1172",
-      "publisherDisplayName": "Crazy Marvin",
-      "artifactName": "${productName}-${version}-${arch}.appx"
+      "shortcutName": "LibreLinkWard"
     },
     "directories": {
       "app": "release/app",
@@ -302,13 +288,19 @@
     ],
     "publish": {
       "provider": "github",
-      "owner": "LibreLinkUpDesktop",
-      "repo": "LibreLinkUpDesktop"
+      "owner": "koumoutsas",
+      "repo": "LibreLinkWard"
     }
   },
   "devEngines": {
-    "node": ">=14.x",
-    "npm": ">=7.x"
+    "runtime": {
+      "name": "node",
+      "version": ">=20"
+    },
+    "packageManager": {
+      "name": "npm",
+      "version": ">=7"
+    }
   },
   "electronmon": {
     "patterns": [

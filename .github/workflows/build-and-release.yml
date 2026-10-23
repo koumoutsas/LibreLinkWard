@@ -54,7 +54,6 @@ jobs:
         with:
           files: |
             release/build/*.msi
-            release/build/*.appx
             release/build/*-setup.exe
           tag_name: ${{ github.ref_name }}
         env:
@@ -95,7 +94,6 @@ jobs:
           name: ubuntu-artifacts
           path: |
             release/build/*.deb
-            release/build/*.snap
             release/build/*.AppImage
 
       - name: Upload to Release (Ubuntu)
@@ -103,9 +101,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            release/build/LibreLinkUpDesktop-*-amd64.deb
-            release/build/LibreLinkUpDesktop-*-amd64.snap
-            release/build/LibreLinkUpDesktop-*-x86_64.AppImage
+            release/build/LibreLinkWard-*-amd64.deb
+            release/build/LibreLinkWard-*-x86_64.AppImage
           tag_name: ${{ github.ref_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -151,8 +148,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            release/build/LibreLinkUpDesktop-*-arm64.dmg
-            release/build/LibreLinkUpDesktop-*-x64.dmg
+            release/build/LibreLinkWard-*-arm64.dmg
+            release/build/LibreLinkWard-*-x64.dmg
           tag_name: ${{ github.ref_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

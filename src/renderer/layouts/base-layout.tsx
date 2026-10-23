@@ -16,7 +16,7 @@ export function BaseLayout({ children, className }: Props) {
   const language = useAuthStore((state) => state.language)
 
   useEffect(() => {
-    i18n.changeLanguage(language)
+    i18n.changeLanguage(language ?? undefined)
   }, [])
 
   return (
