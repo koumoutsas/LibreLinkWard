@@ -33,6 +33,6 @@ Workflow: commit and push after each finished piece of work; update this file.
 - Release workflow has no signing certs for mac/win (unsigned builds); Weblate/Snyk badges removed.
 
 ## Next
-- [ ] Confirm the first CI run is green on GitHub (`gh run list`), fix any OS-specific failures
+- [ ] CI run 39967737951 (`gh run list -R koumoutsas/LibreLinkWard`; plain `gh` targets upstream) was still in `npm install` on all 3 OSes after ~20 min: likely `postinstall` (electron-builder install-app-deps / webpack dll build) hanging or very slow. Investigate (cancel, rerun with logs; consider `--ignore-scripts` + explicit electron install for the test job). Then confirm the first CI run is green on GitHub (`gh run list`), fix any OS-specific failures
 - [ ] 9 docs (README setup/usage/alarms/Nightscout/build matrix, CONTRIBUTING, privacy note)
 - e2e only covers launch + login screen: logging in against the mock needs a base-URL override in `getBaseUrl` (both renderer and main use it), deliberately not added to production code. Unpackaged Electron looks for a dev-only preload, so e2e must use the packaged app. Electron binary may need `node node_modules/electron/install.js` locally.
