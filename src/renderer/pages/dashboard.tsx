@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { GearIcon, PlusIcon } from '@radix-ui/react-icons';
 import { BaseLayout } from '@/layouts/base-layout';
 import { LoadingScreen } from '@/components/ui/loading';
-import { AlarmBanner } from '@/components/alarm-banner';
+import { AlarmNotifier } from '@/components/alarm-notifier';
 import { PatientCard } from '@/components/patient-card';
 import { AddPatientForm } from '@/components/add-patient-form';
 import { usePatients } from '@/hooks/usePatients';
@@ -63,7 +63,7 @@ export default function DashboardPage() {
         </div>
       </div>
       {adding && <AddPatientForm onDone={() => setAdding(false)} />}
-      <AlarmBanner />
+      <AlarmNotifier />
       {patients.length === 0 ? (
         <p className="text-muted-foreground" data-testid="no-patients">
           {status === 'signed-out'

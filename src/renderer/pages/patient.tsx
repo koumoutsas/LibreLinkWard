@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeftIcon, BellIcon } from '@radix-ui/react-icons';
 import { BaseLayout } from '@/layouts/base-layout';
 import { Button } from '@/components/ui/button';
-import { AlarmBanner } from '@/components/alarm-banner';
+import { AlarmNotifier } from '@/components/alarm-notifier';
 import { PatientGraph } from '@/components/patient-graph';
 import { TrendArrow } from '@/components/ui/trend-arrow';
 import { usePatients } from '@/hooks/usePatients';
@@ -36,7 +36,7 @@ export default function PatientPage() {
         <ArrowLeftIcon className="h-5 w-5 mr-2" />
         Patients
       </Button>
-      <AlarmBanner />
+      <AlarmNotifier />
       {!patient ? (
         <p className="mt-4 text-muted-foreground">Patient not found.</p>
       ) : (

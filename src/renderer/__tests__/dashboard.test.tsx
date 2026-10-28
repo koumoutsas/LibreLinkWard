@@ -162,34 +162,3 @@ describe('graph tooltip', () => {
     expect(container).toBeEmptyDOMElement()
   })
 })
-
-describe('alarm banner', () => {
-  const active = [
-    { patientId: 'a', name: 'Alice', kind: 'urgent-low', value: 50, since: 1, acknowledged: false },
-    { patientId: 'c', name: 'Cleo', kind: 'high', value: 300, since: 2, acknowledged: true },
-  ]
-
-  it('names each patient and sends per-patient acknowledge and snooze', async () => {
-    const invoke = (window as any).electron.ipcRenderer.invoke as jest.Mock
-    const base = invoke.getMockImplementation()!
-    invoke.mockImplementation(async (channel: string, ...args: unknown[]) =>
-      channel === 'alarms:get-active' ? active : base(channel, ...args),
-    )
-    renderDashboard()
-    const alice = await screen.findByTestId('alarm-a')
-    expect(alice).toHaveTextContent('Alice — Urgent low: 50 mg/dL')
-    expect(screen.getByTestId('alarm-c')).toHaveTextContent('Cleo — High: 300 mg/dL (acknowledged)')
-    expect(screen.getAllByText('Acknowledge')).toHaveLength(1)
-
-    fireEvent.click(screen.getByText('Acknowledge'))
-    expect(invoke).toHaveBeenCalledWith('alarms:acknowledge', 'a')
-    fireEvent.click(screen.getAllByText('Snooze 30m')[1])
-    expect(invoke).toHaveBeenCalledWith('alarms:snooze', 'c', 30)
-  })
-
-  it('renders nothing when no alarm is active', async () => {
-    renderDashboard()
-    await screen.findByTestId('patient-card-a')
-    expect(screen.queryByTestId('alarm-banner')).not.toBeInTheDocument()
-  })
-})

@@ -22,9 +22,9 @@ const useAlertStore = create<AlertSettingsStore>()(
   persist(
     (set) => ({
       // Initial state
-      bringToFrontEnabled: true,
-      flashWindowEnabled: true,
-      audioAlertEnabled: true,
+      bringToFrontEnabled: false,
+      flashWindowEnabled: false,
+      audioAlertEnabled: false,
       useCustomSound: false,
       overrideThreshold: false,
       customTargetLow: null,
@@ -41,6 +41,14 @@ const useAlertStore = create<AlertSettingsStore>()(
     {
       name: 'alert-settings-storage',
       storage: createJSONStorage(() => localStorage),
+      // Alarms always start disabled; the persisted values for these are ignored at startup.
+      merge: (persisted, current) => ({
+        ...current,
+        ...(persisted as Partial<AlertSettingsStore>),
+        bringToFrontEnabled: false,
+        flashWindowEnabled: false,
+        audioAlertEnabled: false,
+      }),
     }
   )
 );
