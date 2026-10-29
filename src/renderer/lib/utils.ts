@@ -101,7 +101,7 @@ export async function getGlucoseValueForTray(token: string, country: string, acc
   }
 }
 
-export type TrayReading = { name: string; mgdl: number; targetLow?: number; targetHigh?: number }
+export type TrayReading = { name: string; mgdl: number; targetLow?: number; targetHigh?: number; trend?: number }
 
 /** Sends every monitored patient's latest reading; the tray badge shows the highest. */
 export function updateTrayReadings(readings: TrayReading[]) {

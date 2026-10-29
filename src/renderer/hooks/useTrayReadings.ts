@@ -9,7 +9,7 @@ export function useTrayReadings() {
   const unit = useAuthStore((s) => s.resultUnit)
 
   const readings = patients.flatMap((p) =>
-    p.latest ? [{ name: p.name, mgdl: p.latest.ValueInMgPerDl, targetLow: p.targetLow, targetHigh: p.targetHigh }] : [],
+    p.latest ? [{ name: p.name, mgdl: p.latest.ValueInMgPerDl, targetLow: p.targetLow, targetHigh: p.targetHigh, trend: p.latest.TrendArrow ?? 3 }] : [],
   )
   const key = JSON.stringify(readings)
 

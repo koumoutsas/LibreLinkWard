@@ -24,6 +24,8 @@ export interface TrayReading {
   mgdl: number;
   targetLow?: number;
   targetHigh?: number;
+  /** LibreLinkUp TrendArrow, 1 (falling fast) to 5 (rising fast). */
+  trend?: number;
 }
 
 interface TrayManagerState {
@@ -38,8 +40,10 @@ interface TrayManagerState {
   isCreated: boolean;
   trendArrow: number;
   trayTitle: string;
-  readings: { name: string; value: number; targetLow?: number; targetHigh?: number }[];
+  readings: { name: string; value: number; targetLow?: number; targetHigh?: number; trend?: number }[];
 }
+
+const TREND_TEXT: Record<number, string> = { 1: '↓', 2: '↘', 3: '→', 4: '↗', 5: '↑' };
 
 const TREND_ARROW_MAP: Record<number, string> = {
   1: `<svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.14645 2.14645C7.34171 1.95118 7.65829 1.95118 7.85355 2.14645L11.8536 6.14645C12.0488 6.34171 12.0488 6.65829 11.8536 6.85355C11.6583 7.04882 11.3417 7.04882 11.1464 6.85355L8 3.70711L8 12.5C8 12.7761 7.77614 13 7.5 13C7.22386 13 7 12.7761 7 12.5L7 3.70711L3.85355 6.85355C3.65829 7.04882 3.34171 7.04882 3.14645 6.85355C2.95118 6.65829 2.95118 6.34171 3.14645 6.14645L7.14645 2.14645Z" fill="currentColor" fill-rule="evenodd" clip-rule="evenodd"></path></svg>`,
@@ -147,10 +151,12 @@ class TrayManager {
       value: this.clampNumber(convert(r.mgdl)),
       targetLow: r.targetLow,
       targetHigh: r.targetHigh,
+      trend: r.trend,
     }));
     const lowest = readings.reduce((a, b) => (b.mgdl < a.mgdl ? b : a));
-    const fmt = (mgdl: number) => this.formatDisplayNumber(this.clampNumber(convert(mgdl)));
-    this.state.trayTitle = readings.length > 1 ? `${fmt(lowest.mgdl)}–${fmt(highest.mgdl)}` : fmt(highest.mgdl);
+    const fmt = (r: TrayReading) =>
+      `${this.formatDisplayNumber(this.clampNumber(convert(r.mgdl)))}${this.trendText(r.trend)}`;
+    this.state.trayTitle = readings.length > 1 ? `${fmt(lowest)}–${fmt(highest)}` : fmt(highest);
     this.updateTrayNumber(convert(highest.mgdl), unit, highest.targetLow, highest.targetHigh);
   }
 
@@ -421,6 +427,10 @@ class TrayManager {
     });
   }
 
+  private trendText(trend?: number): string {
+    return TREND_TEXT[trend ?? 3] ?? '';
+  }
+
   private escapeHtml(text: string): string {
     return text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
   }
@@ -434,7 +444,7 @@ class TrayManager {
           .map((r) => {
             const color = this.rgbToCss(this.getBackgroundColorForGlucoseLevel(r.value, r.targetLow, r.targetHigh));
             return `<div class="row"><span class="name">${this.escapeHtml(r.name)}</span>` +
-              `<span class="value" style="background:${color}">${this.formatDisplayNumber(r.value)} ${this.escapeHtml(currentUnit)}</span></div>`;
+              `<span class="value" style="background:${color}">${this.formatDisplayNumber(r.value)} ${this.escapeHtml(currentUnit)} ${this.trendText(r.trend)}</span></div>`;
           })
           .join('')
       : `<div class="row"><span class="name">No readings</span></div>`;
@@ -538,7 +548,7 @@ class TrayManager {
     if (!this.state.tray) return;
 
     const readingItems: Electron.MenuItemConstructorOptions[] = this.state.readings.map((r) => ({
-      label: `${r.name}: ${this.formatDisplayNumber(r.value)} ${this.state.currentUnit}`,
+      label: `${r.name}: ${this.formatDisplayNumber(r.value)} ${this.state.currentUnit} ${this.trendText(r.trend)}`,
     }));
 
     const contextMenuTemplate: Electron.MenuItemConstructorOptions[] = [
