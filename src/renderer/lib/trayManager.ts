@@ -9,7 +9,7 @@ const TRAY_TEXT_FONT_PX = 16;
 const TRAY_TEXT_HEIGHT_PX = 22;
 // Drawn at 2x and tagged as 2x, so the size in points is exactly the constants above.
 const TRAY_TEXT_SCALE = 2;
-const LINUX_TRAY_SIZE_PX = 22;
+const LINUX_TRAY_SIZE_PX = 32;
 const TOOLTIP_ROW_HEIGHT = 28;
 const TOOLTIP_PADDING = 12;
 
@@ -254,6 +254,7 @@ class TrayManager {
 
   /** Draws the readings as text in a hidden window. macOS: black on transparent, tinted as a template image. Linux: white on a pill coloured by glucose level, readable on any panel theme. */
   private async renderTextImage(text: string): Promise<Electron.NativeImage> {
+    if (process.platform === 'linux') return this.renderSquareImage(text);
     const win = new BrowserWindow({
       show: false,
       frame: false,
@@ -262,27 +263,57 @@ class TrayManager {
       height: TRAY_TEXT_HEIGHT_PX * TRAY_TEXT_SCALE,
       webPreferences: { offscreen: true, contextIsolation: true },
     });
-    const linux = process.platform === 'linux';
-    // Linux panels shrink wide icons to fit, so a range is stacked (lowest over highest) and the text fills the height.
-    const lines = linux ? text.split('–') : [text];
-    const lineHeightPx = (linux ? LINUX_TRAY_SIZE_PX / lines.length : TRAY_TEXT_HEIGHT_PX) * TRAY_TEXT_SCALE;
-    const fontPx = linux ? lineHeightPx * 0.9 : TRAY_TEXT_FONT_PX * TRAY_TEXT_SCALE;
     try {
-      const pill = linux
-        ? `background:${this.rgbToCss(this.getBackgroundColorForGlucoseLevel(this.state.currentNumber))};border-radius:${4 * TRAY_TEXT_SCALE}px;padding:0 ${2 * TRAY_TEXT_SCALE}px;`
-        : '';
-      const html = `<body style="margin:0;background:transparent;overflow:hidden"><span id="t" style="display:inline-block;white-space:nowrap;${pill}`
-        + `font:${linux ? 700 : 500} ${fontPx}px/${lineHeightPx}px -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;`
-        + `font-variant-numeric:tabular-nums;color:${linux ? '#fff' : '#000'}">${lines.map((l) => this.escapeHtml(l)).join('<br>')}</span></body>`;
+      const html = `<body style="margin:0;background:transparent;overflow:hidden"><span id="t" style="display:inline-block;white-space:nowrap;`
+        + `font:500 ${TRAY_TEXT_FONT_PX * TRAY_TEXT_SCALE}px/${TRAY_TEXT_HEIGHT_PX * TRAY_TEXT_SCALE}px -apple-system,BlinkMacSystemFont,sans-serif;`
+        + `font-variant-numeric:tabular-nums;color:#000">${this.escapeHtml(text)}</span></body>`;
       await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
       const width = Math.ceil(await win.webContents.executeJavaScript('document.getElementById("t").getBoundingClientRect().width'));
-      const height = Math.round(lineHeightPx * lines.length);
+      const height = TRAY_TEXT_HEIGHT_PX * TRAY_TEXT_SCALE;
       win.setContentSize(width, height);
       await new Promise((resolve) => setTimeout(resolve, 50));
       const captured = await win.webContents.capturePage({ x: 0, y: 0, width, height });
       const image = nativeImage.createFromBuffer(captured.toPNG(), { scaleFactor: TRAY_TEXT_SCALE });
-      if (!linux) image.setTemplateImage(true);
+      image.setTemplateImage(true);
       return image;
+    } finally {
+      win.destroy();
+    }
+  }
+
+  /**
+   * Linux: KDE shrinks any wide icon to fit a square box, so draw a square. White bold text on a pill coloured by
+   * glucose level (readable on any panel theme); lines are stacked and the font shrinks only as far as needed to fit.
+   * One patient: the value over its arrow; several: lowest over highest.
+   */
+  private async renderSquareImage(text: string): Promise<Electron.NativeImage> {
+    const size = LINUX_TRAY_SIZE_PX * TRAY_TEXT_SCALE;
+    const arrows = Object.values(TREND_TEXT);
+    const last = text.slice(-1);
+    const lines = text.includes('–') ? text.split('–') : arrows.includes(last) ? [text.slice(0, -1), last] : [text];
+    const win = new BrowserWindow({
+      show: false,
+      frame: false,
+      transparent: true,
+      width: size,
+      height: size,
+      webPreferences: { offscreen: true, contextIsolation: true },
+    });
+    try {
+      const color = this.rgbToCss(this.getBackgroundColorForGlucoseLevel(this.state.currentNumber));
+      const lineHeight = size / lines.length;
+      const html = `<body style="margin:0;background:transparent;overflow:hidden"><div id="b" style="width:${size}px;height:${size}px;`
+        + `box-sizing:border-box;background:${color};border-radius:${4 * TRAY_TEXT_SCALE}px;display:flex;flex-direction:column;`
+        + `align-items:center;justify-content:center;color:#fff;font:700 ${lineHeight}px/${lineHeight}px sans-serif;`
+        + `font-variant-numeric:tabular-nums;white-space:nowrap">${lines.map((l) => `<div class="l">${this.escapeHtml(l)}</div>`).join('')}</div></body>`;
+      await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+      await win.webContents.executeJavaScript(
+        `(() => { const b = document.getElementById("b"); const w = Math.max(...[...b.querySelectorAll(".l")].map((e) => e.scrollWidth));`
+        + ` if (w > ${size}) b.style.fontSize = (${lineHeight} * ${size} / w) + "px"; })()`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const captured = await win.webContents.capturePage({ x: 0, y: 0, width: size, height: size });
+      return nativeImage.createFromBuffer(captured.toPNG(), { scaleFactor: TRAY_TEXT_SCALE });
     } finally {
       win.destroy();
     }
