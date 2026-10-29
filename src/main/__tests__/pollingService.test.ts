@@ -83,7 +83,7 @@ describe('PollingService', () => {
     await flush()
     expect(service.getStatus()).toBe('auth-error')
     expect(onStatus).toHaveBeenLastCalledWith('auth-error')
-    expect(service.getAccounts()).toEqual([{ id: 'u', username: 'u', status: 'auth-error' }])
+    expect(service.getAccounts()).toEqual([{ id: 'u', username: 'u', kind: 'linkup', status: 'auth-error' }])
   })
 
   it('per-patient errors mark only that patient', async () => {

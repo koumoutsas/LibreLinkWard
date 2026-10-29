@@ -21,6 +21,7 @@ As there is no official API from [Abbott](https://www.freestyle.abbott/), the Li
 - Patient page with a 3/6/12 h graph, target band and hover tooltip (value, unit, time).
 - **Per-patient alarms**: urgent low / low / high / urgent high and signal loss, with acknowledge and snooze. The banner names the patient.
 - Optional, per-patient **Nightscout upload** (off by default).
+- **Nightscout as a reading source**: add a Nightscout site as a patient (read-only).
 - Credentials stored with the OS keychain (Electron `safeStorage`); no tracking. See [PRIVACY.md](PRIVACY.md).
 - mg/dL and mmol/L, dark mode.
 
@@ -43,7 +44,10 @@ Each patient has their own configuration. Defaults: urgent low 55, low = sensor 
 - **Acknowledge** silences the current alarm. **Snooze** (15/30/60 min) suppresses all alarms for that patient, **including urgent low**.
 - Sound and window flash are triggered by the app window, so keep the app running (hidden to the tray is fine). Alarm snoozes are not kept across restarts.
 
-### Nightscout (optional)
+### Nightscout as a reading source
+Choose _Add patient_ -> _Nightscout site_, enter the site URL, the API secret (leave blank for a public site) and an optional name. The app reads `GET /api/v1/entries/sgv.json` once a minute for the last 12 h, so the site shows up as one patient with its own graph and alarms. A rejected secret stops polling and the view must be removed and added again. Directions map to the app's five trend arrows (double arrows show as single). Don't also enable upload to the same site for that patient.
+
+### Nightscout upload (optional)
 In a patient's settings, enable Nightscout and enter the URL, API secret and a device name, then press _Test_. New readings are uploaded via API v1 (`POST /api/v1/entries`), resuming after Nightscout's newest entry so nothing is duplicated, and retried with backoff on failure. Only readings still in the app's 12 h memory can be uploaded, so an outage longer than 12 h loses data. The secret is stored encrypted and never shown again.
 
 ## Build

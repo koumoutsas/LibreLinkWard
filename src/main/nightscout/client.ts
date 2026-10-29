@@ -25,7 +25,8 @@ export class NightscoutClient {
       ...config,
       url: `${base}${config.url}`,
       headers: {
-        'api-secret': hashSecret(this.target.apiSecret),
+        // Public sites need no secret; a wrong one is rejected even for reads.
+        ...(this.target.apiSecret ? { 'api-secret': hashSecret(this.target.apiSecret) } : {}),
         'Content-Type': 'application/json',
         Accept: 'application/json',
       },
@@ -37,7 +38,16 @@ export class NightscoutClient {
     // /status is public; /entries needs the secret for write-protected sites, and
     // an authorization check is the only way to catch a wrong secret.
     await this.request({ method: 'GET', url: '/api/v1/status.json' })
-    await this.request({ method: 'GET', url: '/api/v1/verifyauth' })
+    if (this.target.apiSecret) await this.request({ method: 'GET', url: '/api/v1/verifyauth' })
+  }
+
+  /** Raw sgv entries from `sinceMs` on, newest first. */
+  async entriesSince(sinceMs: number, count = 300): Promise<unknown[]> {
+    const res = await this.request({
+      method: 'GET',
+      url: `/api/v1/entries/sgv.json?count=${count}&find[date][$gte]=${Math.floor(sinceMs)}`,
+    })
+    return Array.isArray(res.data) ? res.data : []
   }
 
   /** Epoch ms of the newest stored entry, or undefined if there are none. */

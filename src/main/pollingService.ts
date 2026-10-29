@@ -1,14 +1,24 @@
 import { Connection, Credentials, GraphResult, LinkUpClient, LinkUpError, Poller } from '../shared/linkup'
 import type { PatientStore } from '../shared/stores'
 import { randomUUID } from 'crypto'
-import { CredentialStore, StoredAccount } from './credentialStore'
+import { CredentialStore, NightscoutAccount, StoredAccount } from './credentialStore'
+import { NightscoutClient } from './nightscout/client'
+import { NightscoutSource } from './nightscout/source'
 
 export type ServiceStatus = 'signed-out' | 'running' | 'auth-error'
 
 export type AccountStatus = 'running' | 'auth-error'
 
 /** What the renderer is told about each login; never the password. */
-export type AccountInfo = { id: string; username: string; status: AccountStatus }
+export type AccountInfo = {
+  id: string
+  /** The login name, or the Nightscout site's display name. */
+  username: string
+  kind: 'linkup' | 'nightscout'
+  status: AccountStatus
+}
+
+type ReadingSource = Pick<LinkUpClient, 'getConnections' | 'getGraph'>
 
 export type PollingServiceDeps = {
   credentials: CredentialStore
@@ -16,6 +26,8 @@ export type PollingServiceDeps = {
   /** Called whenever status changes, for pushing to the renderer. */
   onStatus?: (status: ServiceStatus) => void
   createClient?: (credentials: Credentials) => LinkUpClient
+  /** Reader for a Nightscout site; injectable for tests. */
+  createNightscout?: (account: NightscoutAccount) => ReadingSource & { check?: () => Promise<void> }
   intervalMs?: number
   /** Id generator for new logins; injectable for tests. */
   newId?: () => string
@@ -51,7 +63,8 @@ export class PollingService {
   getAccounts(): AccountInfo[] {
     return [...this.accounts.values()].map((a) => ({
       id: a.id,
-      username: a.username,
+      username: a.kind === 'nightscout' ? a.name : a.username,
+      kind: a.kind === 'nightscout' ? 'nightscout' : 'linkup',
       status: this.accountStatus.get(a.id) ?? 'running',
     }))
   }
@@ -89,6 +102,31 @@ export class PollingService {
     return { ok: true }
   }
 
+  /** Verifies a Nightscout site, then stores it and polls it as a patient. */
+  async addNightscout(input: {
+    url: string
+    apiSecret?: string
+    name?: string
+  }): Promise<{ ok: true } | { ok: false; error: string }> {
+    const url = input.url.trim().replace(/\/+$/, '')
+    if (!/^https?:\/\//i.test(url)) return { ok: false, error: 'The URL must start with http:// or https://' }
+    const account: NightscoutAccount = {
+      id: (this.deps.newId ?? randomUUID)(),
+      kind: 'nightscout',
+      url,
+      apiSecret: input.apiSecret ?? '',
+      name: input.name?.trim() || new URL(url).host,
+    }
+    try {
+      await new NightscoutClient(account).testConnection()
+      this.deps.credentials.saveAll([...this.accounts.values(), account])
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) }
+    }
+    this.begin(account)
+    return { ok: true }
+  }
+
   /** Removes one login and all of its patients. */
   removeAccount(id: string): void {
     if (!this.accounts.has(id)) return
@@ -113,7 +151,15 @@ export class PollingService {
     for (const id of [...this.pollers.keys()]) this.halt(id)
   }
 
-  private begin(account: StoredAccount, client = this.createClient(account)): void {
+  private source(account: StoredAccount): ReadingSource {
+    if (account.kind !== 'nightscout') return this.createClient(account)
+    return (
+      this.deps.createNightscout?.(account) ??
+      new NightscoutSource({ client: new NightscoutClient(account), name: account.name })
+    )
+  }
+
+  private begin(account: StoredAccount, client: ReadingSource = this.source(account)): void {
     this.halt(account.id)
     this.accounts.set(account.id, account)
     this.accountStatus.set(account.id, 'running')

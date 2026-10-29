@@ -65,6 +65,10 @@ export const registerPollingHandler = () => {
   ]
 
   ipcMain.handle('linkup:sign-in', (_e, credentials: Credentials) => service!.signIn(credentials))
+  ipcMain.handle(
+    'linkup:add-nightscout',
+    (_e, input: { url: string; apiSecret?: string; name?: string }) => service!.addNightscout(input),
+  )
   ipcMain.handle('linkup:remove-account', (_e, accountId: string) =>
     service!.removeAccount(accountId),
   )
@@ -144,6 +148,7 @@ export const destroyPollingHandler = () => {
   ;[
     'linkup:sign-in',
     'linkup:remove-account',
+    'linkup:add-nightscout',
     'linkup:get-state',
     'alarms:get',
     'alarms:set',

@@ -3,7 +3,7 @@ import type { PatientState } from '../../shared/stores'
 
 export type LinkUpStatus = string
 
-export type AccountInfo = { id: string; username: string; status: 'running' | 'auth-error' }
+export type AccountInfo = { id: string; username: string; kind?: 'linkup' | 'nightscout'; status: 'running' | 'auth-error' }
 
 export type LinkUpSnapshot = { status: LinkUpStatus; accounts?: AccountInfo[]; patients: PatientState[] }
 
