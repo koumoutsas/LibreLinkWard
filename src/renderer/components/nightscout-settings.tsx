@@ -21,6 +21,8 @@ export function NightscoutSettings({ patientId }: { patientId: string }) {
   const [secret, setSecret] = useState('');
   const [device, setDevice] = useState('');
   const [showSecret, setShowSecret] = useState(false);
+  // The stored secret, once revealed, so showing it does not count as an edit.
+  const [revealed, setRevealed] = useState<string>();
   const [saved, setSaved] = useState(false);
   const [testResult, setTestResult] = useState<string>();
 
@@ -47,13 +49,29 @@ export function NightscoutSettings({ patientId }: { patientId: string }) {
     await refresh();
   };
 
-  const dirty = url !== state.url || device !== state.deviceName || secret !== '';
+  const dirty = url !== state.url || device !== state.deviceName || (secret !== '' && secret !== revealed);
 
   // Edits stay in the form until Save is pressed; a blank secret keeps the stored one.
   const saveAll = async () => {
     await save({ url, deviceName: device, ...(secret && { apiSecret: secret }) });
     setSecret('');
+    setRevealed(undefined);
+    setShowSecret(false);
     setSaved(true);
+  };
+
+  const toggleSecret = async () => {
+    if (showSecret) {
+      if (secret === revealed) setSecret('');
+      setShowSecret(false);
+      return;
+    }
+    if (secret === '' && state.hasSecret) {
+      const stored: string = await ipc().invoke('nightscout:reveal-secret', patientId);
+      setRevealed(stored);
+      setSecret(stored);
+    }
+    setShowSecret(true);
   };
 
   const test = async () => {
@@ -106,7 +124,7 @@ export function NightscoutSettings({ patientId }: { patientId: string }) {
               type="button"
               variant="ghost"
               aria-label={showSecret ? 'Hide API secret' : 'Show API secret'}
-              onClick={() => setShowSecret((v) => !v)}
+              onClick={toggleSecret}
             >
               {showSecret ? <EyeClosedIcon /> : <EyeOpenIcon />}
             </Button>

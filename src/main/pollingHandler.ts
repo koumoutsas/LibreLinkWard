@@ -93,7 +93,7 @@ export const registerPollingHandler = () => {
   ipcMain.handle('alarms:clear-snooze', (_e, patientId: string) =>
     alarmService!.clearSnooze(patientId),
   )
-  // The API secret never goes back to the renderer; only whether one is set.
+  // The API secret only goes back to the renderer on an explicit reveal; otherwise just whether one is set.
   ipcMain.handle('nightscout:get', (_e, patientId: string) => {
     const c = nsConfigs[patientId]
     return {
@@ -104,6 +104,7 @@ export const registerPollingHandler = () => {
       status: uploader!.getStatus(patientId),
     }
   })
+  ipcMain.handle('nightscout:reveal-secret', (_e, patientId: string) => nsConfigs[patientId]?.apiSecret ?? '')
   ipcMain.handle(
     'nightscout:set',
     (_e, patientId: string, patch: Partial<NightscoutConfig>) => {
@@ -158,6 +159,7 @@ export const destroyPollingHandler = () => {
     'alarms:snooze',
     'alarms:clear-snooze',
     'nightscout:get',
+    'nightscout:reveal-secret',
     'nightscout:set',
     'nightscout:test',
   ].forEach((c) => ipcMain.removeHandler(c))
