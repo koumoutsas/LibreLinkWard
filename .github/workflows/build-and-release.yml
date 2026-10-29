@@ -8,6 +8,7 @@ on:
     types: [assigned]
   release:
     types: [edited]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -42,7 +43,7 @@ jobs:
         run: dir release/build/
 
       - name: Upload Windows Artifacts for PR
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v7
         with:
           name: windows-artifacts
@@ -88,7 +89,7 @@ jobs:
         run: ls -la release/build/
 
       - name: Upload Ubuntu Artifacts for PR
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v7
         with:
           name: ubuntu-artifacts
@@ -108,6 +109,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build_on_mac:
+    if: github.event_name != 'workflow_dispatch'
     runs-on: macOS-latest
     steps:
       - name: Checkout repository
@@ -136,7 +138,7 @@ jobs:
         run: ls -la release/build/
 
       - name: Upload macOS Artifacts for PR
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v7
         with:
           name: macos-artifacts
