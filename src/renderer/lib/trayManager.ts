@@ -1,10 +1,12 @@
-import { Tray, Menu, nativeImage, BrowserWindow, app } from 'electron';
+import { Tray, Menu, nativeImage, BrowserWindow, app, screen } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 
 // Constants
 const MAX_DISPLAY_NUMBER = 999;
 const MIN_DISPLAY_NUMBER = 0;
+const TRAY_TEXT_FONT_PX = 16;
+const TRAY_TEXT_HEIGHT_PX = 22;
 const TOOLTIP_ROW_HEIGHT = 28;
 const TOOLTIP_PADDING = 12;
 
@@ -73,6 +75,9 @@ class TrayManager {
   };
 
   private tooltipWindow: BrowserWindow | null = null;
+  /** macOS: the readings drawn as a template image, so the text size is ours to choose. */
+  private textImage: Electron.NativeImage | null = null;
+  private textRenderId = 0;
   private isShowingTooltip: boolean = false;
 
   public updateTargets(targetLow: number, targetHigh: number): void {
@@ -165,6 +170,8 @@ class TrayManager {
     this.state.readings = [];
     this.state.trayTitle = '';
     if (!this.state.tray || !this.state.isCreated) return;
+    this.textImage = null;
+    this.textRenderId++;
     this.state.tray.setTitle('');
     this.state.tray.setImage(this.getTrayImage());
     this.updateTooltipContent();
@@ -224,9 +231,47 @@ class TrayManager {
 
   /** On macOS the readings are shown as text alone; the icon is only used when there is no text. */
   private getTrayImage(): Electron.NativeImage {
-    return process.platform === 'darwin' && this.state.trayTitle
-      ? nativeImage.createEmpty()
+    return process.platform === 'darwin' && this.state.trayTitle && this.textImage
+      ? this.textImage
       : this.createIconFromFile();
+  }
+
+  /** Draws the readings as text in a hidden window; black on transparent, tinted by macOS as a template image. */
+  private async renderTextImage(text: string): Promise<Electron.NativeImage> {
+    const win = new BrowserWindow({
+      show: false,
+      frame: false,
+      transparent: true,
+      width: 400,
+      height: TRAY_TEXT_HEIGHT_PX,
+      webPreferences: { offscreen: true, contextIsolation: true },
+    });
+    try {
+      const html = `<body style="margin:0;background:transparent;overflow:hidden"><span id="t" style="display:inline-block;white-space:nowrap;`
+        + `font:500 ${TRAY_TEXT_FONT_PX}px/${TRAY_TEXT_HEIGHT_PX}px -apple-system,BlinkMacSystemFont,sans-serif;`
+        + `font-variant-numeric:tabular-nums;color:#000">${this.escapeHtml(text)}</span></body>`;
+      await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+      const width = Math.ceil(await win.webContents.executeJavaScript('document.getElementById("t").getBoundingClientRect().width'));
+      win.setContentSize(width, TRAY_TEXT_HEIGHT_PX);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const captured = await win.webContents.capturePage({ x: 0, y: 0, width, height: TRAY_TEXT_HEIGHT_PX });
+      const image = nativeImage.createFromBuffer(captured.toPNG(), { scaleFactor: screen.getPrimaryDisplay().scaleFactor });
+      image.setTemplateImage(true);
+      return image;
+    } finally {
+      win.destroy();
+    }
+  }
+
+  private updateTextImage(): void {
+    const id = ++this.textRenderId;
+    this.renderTextImage(this.state.trayTitle)
+      .then((image) => {
+        if (id !== this.textRenderId || !this.state.tray) return;
+        this.textImage = image;
+        this.state.tray.setImage(image);
+      })
+      .catch((error) => console.error('Failed to render tray text:', error));
   }
 
   private createIconFromFile(): Electron.NativeImage {
@@ -526,8 +571,14 @@ class TrayManager {
 
     try {
       this.state.tray.setImage(this.getTrayImage());
-      // Text beside the icon in the menu bar (macOS/Linux): lowest–highest reading.
-      this.state.tray.setTitle(this.state.trayTitle);
+      if (process.platform === 'darwin') {
+        // setTitle can't change the font size, so macOS gets the text as an image.
+        this.state.tray.setTitle('');
+        this.updateTextImage();
+      } else {
+        // Text beside the icon (Linux): lowest–highest reading.
+        this.state.tray.setTitle(this.state.trayTitle);
+      }
       this.updateTooltipContent();
       this.updateTrayContextMenu();
       this.notifyRenderer();
