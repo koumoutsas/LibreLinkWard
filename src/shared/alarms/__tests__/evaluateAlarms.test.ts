@@ -8,7 +8,7 @@ import {
 
 const NOW = Date.parse('2026-01-01T12:00:00Z')
 const MIN = 60_000
-const config = defaultAlarmConfig({ targetLow: 70, targetHigh: 180 })
+const config = { ...defaultAlarmConfig({ targetLow: 70, targetHigh: 180 }), enabled: true, sound: true }
 const reading = (v: number, minsAgo = 0) => {
   const ts = new Date(NOW - minsAgo * MIN).toISOString()
   return { Timestamp: ts, FactoryTimestamp: ts, ValueInMgPerDl: v }

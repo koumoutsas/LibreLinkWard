@@ -24,12 +24,12 @@ export const FALLBACK_DEFAULTS = {
 /** Defaults follow the sensor's own target range when available. */
 export function defaultAlarmConfig(targets: Targets = {}): AlarmConfig {
   return {
-    enabled: true,
+    enabled: false,
     ...FALLBACK_DEFAULTS,
     low: targets.targetLow ?? FALLBACK_DEFAULTS.low,
     high: targets.targetHigh ?? FALLBACK_DEFAULTS.high,
     signalLossMinutes: 20,
-    sound: true,
+    sound: false,
   }
 }
 

@@ -16,7 +16,7 @@ const graph = (id: string, name: string, value: number) => {
 
 function setup() {
   const patients = createPatientStore()
-  const alarms = createAlarmStore()
+  const alarms = createAlarmStore({ overrides: Object.fromEntries(['a', 'b'].map((id) => [id, { enabled: true, sound: true }])) })
   const notes: AlarmNotification[] = []
   const actives: ActiveAlarm[][] = []
   const service = new AlarmService({

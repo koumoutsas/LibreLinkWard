@@ -69,6 +69,7 @@ describe('alarmStore', () => {
   it('defaults track sensor targets, with fallbacks', () => {
     expect(defaultAlarmConfig({ targetLow: 80, targetHigh: 160 })).toMatchObject({ low: 80, high: 160, urgentLow: 55 })
     expect(defaultAlarmConfig()).toMatchObject({ low: 70, high: 180, urgentHigh: 250 })
+    expect(defaultAlarmConfig()).toMatchObject({ enabled: false, sound: false })
   })
 
   it('overrides are per patient and layered over defaults', () => {

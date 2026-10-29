@@ -40,7 +40,7 @@ describe('polling -> store -> alarm -> Nightscout (mock servers)', () => {
 
   const build = () => {
     const patients = createPatientStore()
-    const alarms = createAlarmStore()
+    const alarms = createAlarmStore({ overrides: Object.fromEntries(['v~ann', 'v~bob', 'v~cy'].map((id) => [id, { enabled: true, sound: true }])) })
     const notes: AlarmNotification[] = []
     const alarmService = new AlarmService({ patients, alarms, onActive: () => {}, onNotify: (n) => notes.push(n) })
     const credentials = { loadAll: () => [], saveAll: jest.fn(), clear: jest.fn() }
