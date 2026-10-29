@@ -5,7 +5,6 @@ import {
   ArrowLeftIcon,
   MixerVerticalIcon,
   PersonIcon,
-  BellIcon,
 } from '@radix-ui/react-icons';
 import { ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -26,7 +25,7 @@ function SidebarButton({
 }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const isActive = url === location.pathname;
+  const isActive = location.pathname.startsWith(url);
 
   return (
     <Button
@@ -64,13 +63,8 @@ export default function SettingsLayout({ children }: Props) {
           />
 
           <SidebarButton
-            label={t('Alert')}
-            url="/settings/alert"
-            icon={<BellIcon className="mr-3" />}
-          />
-          <SidebarButton
-            label={t('Account')}
-            url="/settings/account"
+            label={t('Accounts')}
+            url="/settings/accounts"
             icon={<PersonIcon className="mr-3" />}
           />
         </div>

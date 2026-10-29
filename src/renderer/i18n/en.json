@@ -2,7 +2,8 @@
   "Welcome": "This is a desktop application that fetches your blood sugar from LibreLinkUp",
   "Settings": "Settings",
   "General": "General",
-  "Account": "Account",
+  "Accounts": "Accounts",
+  "Logout": "Logout",
 
   "First Name": "First Name",
   "Last Name": "Last Name",
@@ -71,7 +72,7 @@
   "mmol/L": "mmol/L",
   "mg/dL": "mg/dL",
 
-  "Alert": "Alert",
+  "Alerts": "Alerts",
   "ALERT_DESCRIPTION": "LibreLinkWard can alert you when your blood sugar level is outside of a normal range. Choose how you'll be alerted and adjust the normal range below.",
   "Bring Window to Front": "Bring Window to Front",
   "Flash Window": "Flash Window",

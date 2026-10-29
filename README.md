@@ -34,8 +34,8 @@ Each login is verified before it is saved, and all logins are polled once a minu
 
 ## Usage
 - **Dashboard**: one view per login, each with the patient's value, trend and a 6 h graph (hover for value and time). Click a view for the patient page (3/6/12 h graph, alarms). Views are coloured by that patient's own thresholds.
-- **Settings > Alerts** lists patients; open one to edit its alarms.
-- **Logout** (Settings > Account) removes all logins.
+- **Settings > Accounts** lists each login with its patients' alarms (and Nightscout upload for LibreLinkUp logins). The window, flash and sound behaviour is under **Settings > General**.
+- **Logout** (Settings > Accounts, per login) removes that login and its patients.
 
 ### Alarms
 Each patient has their own configuration. Defaults: urgent low 55, low = sensor target low (70), high = sensor target high (180), urgent high 250 mg/dL; signal loss after 20 min. Thresholds are shown in your chosen unit.
@@ -48,7 +48,7 @@ Each patient has their own configuration. Defaults: urgent low 55, low = sensor 
 Choose _Add patient_ -> _Nightscout site_, enter the site URL, the API secret (leave blank for a public site) and an optional name. The app reads `GET /api/v1/entries/sgv.json` once a minute for the last 12 h, so the site shows up as one patient with its own graph and alarms. The site's target range (`bgTargetBottom`/`bgTargetTop` from its status, refreshed hourly) sets the default alarm thresholds and the target band; you can still override them per patient. A rejected secret stops polling and the view must be removed and added again. Directions map to the app's five trend arrows (double arrows show as single).
 
 ### Nightscout upload (optional)
-In a patient's settings, enable Nightscout and enter the URL, API secret and a device name, then press _Test_. New readings are uploaded via API v1 (`POST /api/v1/entries`), resuming after Nightscout's newest entry so nothing is duplicated, and retried with backoff on failure. Only readings still in the app's 12 h memory can be uploaded, so an outage longer than 12 h loses data. The secret is stored encrypted and never shown again.
+In Settings > Accounts, under a LibreLinkUp login's patient, enable Nightscout and enter the URL, API secret and a device name, then press _Test_. New readings are uploaded via API v1 (`POST /api/v1/entries`), resuming after Nightscout's newest entry so nothing is duplicated, and retried with backoff on failure. Only readings still in the app's 12 h memory can be uploaded, so an outage longer than 12 h loses data. The secret is stored encrypted and never shown again.
 
 ## Build
 Requires Node 22.15+. `npm install --legacy-peer-deps`
