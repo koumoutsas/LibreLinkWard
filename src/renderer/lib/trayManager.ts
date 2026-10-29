@@ -9,6 +9,7 @@ const TRAY_TEXT_FONT_PX = 16;
 const TRAY_TEXT_HEIGHT_PX = 22;
 // Drawn at 2x and tagged as 2x, so the size in points is exactly the constants above.
 const TRAY_TEXT_SCALE = 2;
+const LINUX_TRAY_SIZE_PX = 22;
 const TOOLTIP_ROW_HEIGHT = 28;
 const TOOLTIP_PADDING = 12;
 
@@ -262,16 +263,20 @@ class TrayManager {
       webPreferences: { offscreen: true, contextIsolation: true },
     });
     const linux = process.platform === 'linux';
+    // Linux panels shrink wide icons to fit, so a range is stacked (lowest over highest) and the text fills the height.
+    const lines = linux ? text.split('–') : [text];
+    const lineHeightPx = (linux ? LINUX_TRAY_SIZE_PX / lines.length : TRAY_TEXT_HEIGHT_PX) * TRAY_TEXT_SCALE;
+    const fontPx = linux ? lineHeightPx * 0.9 : TRAY_TEXT_FONT_PX * TRAY_TEXT_SCALE;
     try {
       const pill = linux
-        ? `background:${this.rgbToCss(this.getBackgroundColorForGlucoseLevel(this.state.currentNumber))};border-radius:${6 * TRAY_TEXT_SCALE}px;padding:0 ${4 * TRAY_TEXT_SCALE}px;`
+        ? `background:${this.rgbToCss(this.getBackgroundColorForGlucoseLevel(this.state.currentNumber))};border-radius:${4 * TRAY_TEXT_SCALE}px;padding:0 ${2 * TRAY_TEXT_SCALE}px;`
         : '';
       const html = `<body style="margin:0;background:transparent;overflow:hidden"><span id="t" style="display:inline-block;white-space:nowrap;${pill}`
-        + `font:${linux ? 700 : 500} ${TRAY_TEXT_FONT_PX * TRAY_TEXT_SCALE}px/${TRAY_TEXT_HEIGHT_PX * TRAY_TEXT_SCALE}px -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;`
-        + `font-variant-numeric:tabular-nums;color:${linux ? '#fff' : '#000'}">${this.escapeHtml(text)}</span></body>`;
+        + `font:${linux ? 700 : 500} ${fontPx}px/${lineHeightPx}px -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;`
+        + `font-variant-numeric:tabular-nums;color:${linux ? '#fff' : '#000'}">${lines.map((l) => this.escapeHtml(l)).join('<br>')}</span></body>`;
       await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
       const width = Math.ceil(await win.webContents.executeJavaScript('document.getElementById("t").getBoundingClientRect().width'));
-      const height = TRAY_TEXT_HEIGHT_PX * TRAY_TEXT_SCALE;
+      const height = Math.round(lineHeightPx * lines.length);
       win.setContentSize(width, height);
       await new Promise((resolve) => setTimeout(resolve, 50));
       const captured = await win.webContents.capturePage({ x: 0, y: 0, width, height });

@@ -12,7 +12,7 @@ import { registerRefreshHandler, destroyRefreshHandler } from "./refreshHandler"
 import { registerAlertHandler, destroyAlertHandler } from "./alertHandler";
 import { registerPollingHandler, destroyPollingHandler } from "./pollingHandler";
 import { registerTrayHandler, destroyTrayHandler, setTrayMainWindow } from "./trayHandler";
-import { destroyTray } from './../renderer/lib/trayManager';
+import { destroyTray, hasTray } from './../renderer/lib/trayManager';
 
 // class AppUpdater {
 //   constructor() {
@@ -64,7 +64,8 @@ const createWindow = async () => {
   })
 
   mainWindow.on('close', function (this: BrowserWindow, event) {
-    if (process.platform === 'darwin' && !isQuitting) {
+    // Keep running in the tray; on Linux only when there is a tray to restore it from.
+    if (!isQuitting && (process.platform === 'darwin' || (process.platform === 'linux' && hasTray()))) {
       event.preventDefault();
       try {
         this.hide();
@@ -73,7 +74,7 @@ const createWindow = async () => {
       }
       return;
     }
-    // allow close on non-mac or when quitting
+    // allow close on Windows, on Linux without a tray, or when quitting
   });
 
 
