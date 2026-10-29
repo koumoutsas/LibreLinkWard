@@ -32,10 +32,12 @@ export function entryToPoint(raw: any): GraphPoint | null {
 }
 
 export type NightscoutSourceOptions = {
-  client: Pick<NightscoutClient, 'entriesSince'>
+  client: Pick<NightscoutClient, 'entriesSince'> & Partial<Pick<NightscoutClient, 'targetRange'>>
   name: string
   now?: () => number
 }
+
+const TARGET_REFRESH_MS = 60 * 60 * 1000
 
 const asLinkUpError = (e: any): LinkUpError => {
   if (e instanceof LinkUpError) return e
@@ -54,14 +56,38 @@ const asLinkUpError = (e: any): LinkUpError => {
  * LibreLinkUp, so it feeds the patient store like any other login.
  */
 export class NightscoutSource {
+  private target: { low?: number; high?: number } = {}
+  private targetAt = -Infinity
+
   constructor(private readonly opts: NightscoutSourceOptions) {}
 
+  private now = () => (this.opts.now ?? Date.now)()
+
+  /** The site's target range, refreshed hourly; a failed read keeps the old one. */
+  private async refreshTarget(): Promise<void> {
+    if (!this.opts.client.targetRange || this.now() - this.targetAt < TARGET_REFRESH_MS) return
+    try {
+      this.target = await this.opts.client.targetRange()
+      this.targetAt = this.now()
+    } catch {
+      // Targets are optional; the readings request reports real connection problems.
+    }
+  }
+
   async getConnections(): Promise<Connection[]> {
-    return [{ patientId: NIGHTSCOUT_PATIENT_ID, firstName: this.opts.name }]
+    await this.refreshTarget()
+    return [
+      {
+        patientId: NIGHTSCOUT_PATIENT_ID,
+        firstName: this.opts.name,
+        targetLow: this.target.low,
+        targetHigh: this.target.high,
+      },
+    ]
   }
 
   async getGraph(patientId: string): Promise<GraphResult> {
-    const since = (this.opts.now ?? Date.now)() - HISTORY_WINDOW_MS
+    const since = this.now() - HISTORY_WINDOW_MS
     let raw: unknown[]
     try {
       raw = await this.opts.client.entriesSince(since)
@@ -73,7 +99,12 @@ export class NightscoutSource {
       .filter((p): p is GraphPoint => p !== null)
       .sort((a, b) => Date.parse(a.Timestamp) - Date.parse(b.Timestamp))
     return {
-      connection: { patientId, firstName: this.opts.name },
+      connection: {
+        patientId,
+        firstName: this.opts.name,
+        targetLow: this.target.low,
+        targetHigh: this.target.high,
+      },
       graphData,
       glucoseMeasurement: graphData[graphData.length - 1],
     }

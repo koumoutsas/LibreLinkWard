@@ -41,6 +41,18 @@ export class NightscoutClient {
     if (this.target.apiSecret) await this.request({ method: 'GET', url: '/api/v1/verifyauth' })
   }
 
+  /** The site's target range in mg/dL (Nightscout normalizes its thresholds to mg/dL). */
+  async targetRange(): Promise<{ low?: number; high?: number }> {
+    const res = await this.request({ method: 'GET', url: '/api/v1/status.json' })
+    const t = res.data?.settings?.thresholds
+    const low = Number(t?.bgTargetBottom)
+    const high = Number(t?.bgTargetTop)
+    return {
+      low: Number.isFinite(low) && low > 0 ? low : undefined,
+      high: Number.isFinite(high) && high > 0 ? high : undefined,
+    }
+  }
+
   /** Raw sgv entries from `sinceMs` on, newest first. */
   async entriesSince(sinceMs: number, count = 300): Promise<unknown[]> {
     const res = await this.request({

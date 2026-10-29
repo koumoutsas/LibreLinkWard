@@ -61,6 +61,52 @@ describe('NightscoutSource', () => {
   })
 })
 
+describe('Nightscout target range', () => {
+  const clock = { t: Date.UTC(2026, 0, 1) }
+  const make = (targetRange: jest.Mock) =>
+    new NightscoutSource({
+      client: { entriesSince: jest.fn().mockResolvedValue([]), targetRange },
+      name: 'Ann',
+      now: () => clock.t,
+    })
+
+  it('puts the site thresholds on the patient and refreshes hourly', async () => {
+    const targetRange = jest.fn().mockResolvedValue({ low: 80, high: 180 })
+    const src = make(targetRange)
+    expect(await src.getConnections()).toEqual([
+      { patientId: NIGHTSCOUT_PATIENT_ID, firstName: 'Ann', targetLow: 80, targetHigh: 180 },
+    ])
+    expect((await src.getGraph('nightscout')).connection).toMatchObject({ targetLow: 80, targetHigh: 180 })
+    await src.getConnections()
+    expect(targetRange).toHaveBeenCalledTimes(1)
+    clock.t += 61 * 60 * 1000
+    await src.getConnections()
+    expect(targetRange).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps going without targets when the status read fails', async () => {
+    const src = make(jest.fn().mockRejectedValue(new Error('boom')))
+    const [c] = await src.getConnections()
+    expect(c.targetLow).toBeUndefined()
+    expect(c.targetHigh).toBeUndefined()
+  })
+
+  it('reads bgTargetBottom/bgTargetTop from status.json and ignores bad values', async () => {
+    const ok = jest.fn().mockResolvedValue({
+      data: { settings: { thresholds: { bgTargetBottom: 70, bgTargetTop: '160' } } },
+    })
+    expect(await new NightscoutClient({ url: 'https://ns.test', apiSecret: '' }, ok).targetRange()).toEqual({
+      low: 70,
+      high: 160,
+    })
+    const bad = jest.fn().mockResolvedValue({ data: { settings: {} } })
+    expect(await new NightscoutClient({ url: 'https://ns.test', apiSecret: '' }, bad).targetRange()).toEqual({
+      low: undefined,
+      high: undefined,
+    })
+  })
+})
+
 describe('NightscoutClient reads', () => {
   it('queries sgv entries since a time and omits the header without a secret', async () => {
     const http = jest.fn().mockResolvedValue({ data: [entry(0, 100)] })
