@@ -129,7 +129,7 @@ export default function LoginPage() {
     >
       <div className="flex flex-col items-center p-12">
         <img className="mb-3" src={logo} width={80} />
-        <h2 className="font-semibold text-2xl">LibreLinkUpDesktop</h2>
+        <h2 className="font-semibold text-2xl">LibreLinkWard</h2>
         <p className="text-gray-400">
           {t('Welcome')}
         </p>
@@ -243,7 +243,7 @@ export default function LoginPage() {
                   <ol className="list-decimal pl-4 text-sm">
                     <li>
                     <Trans i18nKey="getCredentialsStep1">
-          As sharing person, open your <a href={t('getCredentialsStep1Link')} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">Libre smartphone app</a>, go to <em>Connected Apps</em>, click on <em>Manage</em> next to LibreLinkUp, click on <em>Add connection</em> and input the details for the account you wish to use with LibreLinkUpDesktop.
+          As sharing person, open your <a href={t('getCredentialsStep1Link')} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">Libre smartphone app</a>, go to <em>Connected Apps</em>, click on <em>Manage</em> next to LibreLinkUp, click on <em>Add connection</em> and input the details for the account you wish to use with LibreLinkWard.
         </Trans>
                     </li>
                     <li>{t('getCredentialsStep2')}</li>

@@ -14,6 +14,6 @@ export function useTrayReadings() {
   const key = JSON.stringify(readings)
 
   useEffect(() => {
-    if (readings.length > 0) updateTrayReadings(readings)
+    updateTrayReadings(readings)
   }, [key, unit])
 }

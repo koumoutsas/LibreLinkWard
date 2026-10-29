@@ -1,7 +1,7 @@
 {
     "Light": "Claro",
     "German": "Alemán",
-    "getCredentialsStep1": "Como persona con acceso compartido, abre tu aplicación <1>FreeStyle LibreLink</1> en tu dispositivo móvil, en el menú de navegación ve a <3>Aplicaciones Conectadas</3>, haz clic sobre <5>Gestionar</5> junto a LibreLinkUp, haz clic sobre <7>Añadir conexión</7> e introduce los detalles de la cuenta que deseas usar con LibreLinkUpDesktop (esta aplicación).",
+    "getCredentialsStep1": "Como persona con acceso compartido, abre tu aplicación <1>FreeStyle LibreLink</1> en tu dispositivo móvil, en el menú de navegación ve a <3>Aplicaciones Conectadas</3>, haz clic sobre <5>Gestionar</5> junto a LibreLinkUp, haz clic sobre <7>Añadir conexión</7> e introduce los detalles de la cuenta que deseas usar con LibreLinkWard (esta aplicación).",
     "Login": "Entrar",
     "Country": "País",
     "Language": "Idioma",
@@ -62,7 +62,7 @@
     "mmol/L": "mmol/L",
     "mg/dL": "mg/dL",
     "Alert": "Aviso",
-    "ALERT_DESCRIPTION": "LibreLinkUpDesktop puede avisarte cuando tu nivel de azúcar en sangre se salga de los valores normales. Elige cómo quieres recibir las alertas y ajusta los valores normales a continuación.",
+    "ALERT_DESCRIPTION": "LibreLinkWard puede avisarte cuando tu nivel de azúcar en sangre se salga de los valores normales. Elige cómo quieres recibir las alertas y ajusta los valores normales a continuación.",
     "Bring Window to Front": "Traer la ventana al frente",
     "Flash Window": "Ventana emergente",
     "Play Sound": "Reproducir sonido",

@@ -136,7 +136,10 @@ class TrayManager {
 
   /** Title shows the lowest and highest reading (one value for one patient); the menu lists every patient's latest. */
   public updateReadings(readings: TrayReading[], unit: string): void {
-    if (readings.length === 0) return;
+    if (readings.length === 0) {
+      this.clearReadings();
+      return;
+    }
     const convert = (mgdl: number) => (unit === 'mmol/L' ? Math.round((mgdl / 18) * 10) / 10 : Math.round(mgdl));
     const highest = readings.reduce((a, b) => (b.mgdl > a.mgdl ? b : a));
     this.state.readings = readings.map((r) => ({
@@ -149,6 +152,16 @@ class TrayManager {
     const fmt = (mgdl: number) => this.formatDisplayNumber(this.clampNumber(convert(mgdl)));
     this.state.trayTitle = readings.length > 1 ? `${fmt(lowest.mgdl)}–${fmt(highest.mgdl)}` : fmt(highest.mgdl);
     this.updateTrayNumber(convert(highest.mgdl), unit, highest.targetLow, highest.targetHigh);
+  }
+
+  /** No patients left: drop the title and the readings from the menu and popup. */
+  private clearReadings(): void {
+    this.state.readings = [];
+    this.state.trayTitle = '';
+    if (!this.state.tray || !this.state.isCreated) return;
+    this.state.tray.setTitle('');
+    this.updateTooltipContent();
+    this.updateTrayContextMenu();
   }
 
   public updateTrayNumber(
@@ -405,7 +418,7 @@ class TrayManager {
   }
 
   private getTooltipHTML(): string {
-    const { displayValue, currentUnit, currentNumber, trendArrow, readings } = this.state;
+    const { currentUnit, trendArrow, readings } = this.state;
     const trendSvg = TREND_ARROW_MAP[trendArrow] || DEFAULT_ARROW_SVG;
 
     const rows = readings.length
@@ -416,9 +429,7 @@ class TrayManager {
               `<span class="value" style="background:${color}">${this.formatDisplayNumber(r.value)} ${this.escapeHtml(currentUnit)}</span></div>`;
           })
           .join('')
-      : `<div class="row"><span class="name"></span><span class="value" style="background:${this.rgbToCss(
-          this.getBackgroundColorForGlucoseLevel(currentNumber),
-        )}">${displayValue} ${this.escapeHtml(currentUnit)}</span></div>`;
+      : `<div class="row"><span class="name">No readings</span></div>`;
 
     return encodeURIComponent(`
   <!DOCTYPE html>
@@ -519,15 +530,12 @@ class TrayManager {
   private updateTrayContextMenu(): void {
     if (!this.state.tray) return;
 
-    const readingItems: Electron.MenuItemConstructorOptions[] = this.state.readings.length
-      ? this.state.readings.map((r) => ({
-          label: `${r.name}: ${this.formatDisplayNumber(r.value)} ${this.state.currentUnit}`,
-        }))
-      : [{ label: `Blood Sugar: ${this.state.displayValue} ${this.state.currentUnit}` }];
+    const readingItems: Electron.MenuItemConstructorOptions[] = this.state.readings.map((r) => ({
+      label: `${r.name}: ${this.formatDisplayNumber(r.value)} ${this.state.currentUnit}`,
+    }));
 
     const contextMenuTemplate: Electron.MenuItemConstructorOptions[] = [
-      ...readingItems,
-      { type: 'separator' },
+      ...(readingItems.length ? [...readingItems, { type: 'separator' as const }] : []),
       {
         label: 'Bring to Front',
         click: () => {

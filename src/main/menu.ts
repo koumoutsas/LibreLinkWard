@@ -53,10 +53,10 @@ export default class MenuBuilder {
 
   buildDarwinTemplate(): MenuItemConstructorOptions[] {
     const subMenuAbout: DarwinMenuItemConstructorOptions = {
-      label: 'LibreLinkUpDesktop',
+      label: 'LibreLinkWard',
       submenu: [
         {
-          label: 'Hide LibreLinkUpDesktop',
+          label: 'Hide LibreLinkWard',
           accelerator: 'Command+H',
           selector: 'hide:',
         },

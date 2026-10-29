@@ -26,7 +26,7 @@ export default function LandingPage() {
     >
       <div className="flex flex-col items-center gap-3 animate-pulse pt-24">
         <img src={logo} width={80} />
-        <h2 className="font-semibold">LibreLinkUpDesktop</h2>
+        <h2 className="font-semibold">LibreLinkWard</h2>
       </div>
     </PublicLayout>
   )

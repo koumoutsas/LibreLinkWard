@@ -7,7 +7,7 @@ export const registerTrayHandler = () => {
 
   ipcMain.on('update-tray-readings', (event, readings: TrayReading[], unit: string) => {
     try {
-      if (!hasTray() && mainWindow) createTray(mainWindow);
+      if (readings.length > 0 && !hasTray() && mainWindow) createTray(mainWindow);
       updateTrayReadings(readings, unit);
     } catch (error) {
       console.error('Error updating tray readings:', error);
