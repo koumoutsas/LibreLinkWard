@@ -1,1 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" fill="none" viewBox="0 0 72 72"><g clip-path="url(#clip0_213_9)"><rect width="72" height="72" fill="#F30" rx="36"/><path fill="#fff" d="M52 42.0003C52 50.8368 44.8366 58.0003 36 58.0003C27.1634 58.0003 20 50.8368 20 42.0003C20 31.4754 30.7562 18.828 34.6302 14.6141C35.3776 13.8012 36.6224 13.8012 37.3697 14.6141C41.2438 18.8279 52 31.4754 52 42.0003Z"/><mask id="mask0_213_9" style="mask-type:alpha" width="32" height="44" x="20" y="14" maskUnits="userSpaceOnUse"><path fill="#fff" d="M52 42.0003C52 50.8368 44.8366 58.0003 36 58.0003C27.1634 58.0003 20 50.8368 20 42.0003C20 32.1343 29.4515 20.4033 33.826 15.5022C34.5098 14.7361 34.8517 14.353 35.339 14.1823C35.7375 14.0428 36.2625 14.0428 36.661 14.1823C37.1483 14.353 37.4902 14.7361 38.174 15.5022C42.5485 20.4033 52 32.1343 52 42.0003Z"/></mask><g mask="url(#mask0_213_9)"><path stroke="url(#paint0_linear_213_9)" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M39.5 36H45.5M45.5 36V42M45.5 36L38.2627 43.2373C37.4707 44.0293 37.0747 44.4253 36.618 44.5737C36.2163 44.7042 35.7837 44.7042 35.382 44.5737C34.9253 44.4253 34.5293 44.0293 33.7373 43.2373L33.2627 42.7627C32.4707 41.9707 32.0747 41.5747 31.618 41.4263C31.2163 41.2958 30.7837 41.2958 30.382 41.4263C29.9253 41.5747 29.5293 41.9707 28.7373 42.7627L21.5 50"/></g></g><defs><linearGradient id="paint0_linear_213_9" x1="41.5" x2="22" y1="29.5" y2="49" gradientUnits="userSpaceOnUse"><stop stop-color="#B80000"/><stop offset="1" stop-color="#F30"/></linearGradient><clipPath id="clip0_213_9"><rect width="72" height="72" fill="#fff"/></clipPath></defs></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="512" y1="0" x2="512" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2563EB"/>
+      <stop offset="1" stop-color="#1E1B4B"/>
+    </linearGradient>
+    <linearGradient id="drop" x1="512" y1="340" x2="512" y2="680" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2DD4BF"/>
+      <stop offset="1" stop-color="#0891B2"/>
+    </linearGradient>
+  </defs>
+  <circle cx="512" cy="512" r="512" fill="url(#bg)"/>
+  <path d="M512 160L772 258V502C772 668 658 790 512 862C366 790 252 668 252 502V258L512 160Z" fill="#fff"/>
+  <path d="M512 336C512 336 388 468 388 568C388 636.5 443.5 692 512 692C580.5 692 636 636.5 636 568C636 468 512 336 512 336Z" fill="url(#drop)"/>
+  <path d="M434 596L482 548L520 586L592 514" stroke="#fff" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
