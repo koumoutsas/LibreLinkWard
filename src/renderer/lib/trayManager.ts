@@ -1,4 +1,4 @@
-import { Tray, Menu, nativeImage, BrowserWindow, app, screen } from 'electron';
+import { Tray, Menu, nativeImage, BrowserWindow, app } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -7,6 +7,8 @@ const MAX_DISPLAY_NUMBER = 999;
 const MIN_DISPLAY_NUMBER = 0;
 const TRAY_TEXT_FONT_PX = 16;
 const TRAY_TEXT_HEIGHT_PX = 22;
+// Drawn at 2x and tagged as 2x, so the size in points is exactly the constants above.
+const TRAY_TEXT_SCALE = 2;
 const TOOLTIP_ROW_HEIGHT = 28;
 const TOOLTIP_PADDING = 12;
 
@@ -243,19 +245,20 @@ class TrayManager {
       frame: false,
       transparent: true,
       width: 400,
-      height: TRAY_TEXT_HEIGHT_PX,
+      height: TRAY_TEXT_HEIGHT_PX * TRAY_TEXT_SCALE,
       webPreferences: { offscreen: true, contextIsolation: true },
     });
     try {
       const html = `<body style="margin:0;background:transparent;overflow:hidden"><span id="t" style="display:inline-block;white-space:nowrap;`
-        + `font:500 ${TRAY_TEXT_FONT_PX}px/${TRAY_TEXT_HEIGHT_PX}px -apple-system,BlinkMacSystemFont,sans-serif;`
+        + `font:500 ${TRAY_TEXT_FONT_PX * TRAY_TEXT_SCALE}px/${TRAY_TEXT_HEIGHT_PX * TRAY_TEXT_SCALE}px -apple-system,BlinkMacSystemFont,sans-serif;`
         + `font-variant-numeric:tabular-nums;color:#000">${this.escapeHtml(text)}</span></body>`;
       await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
       const width = Math.ceil(await win.webContents.executeJavaScript('document.getElementById("t").getBoundingClientRect().width'));
-      win.setContentSize(width, TRAY_TEXT_HEIGHT_PX);
+      const height = TRAY_TEXT_HEIGHT_PX * TRAY_TEXT_SCALE;
+      win.setContentSize(width, height);
       await new Promise((resolve) => setTimeout(resolve, 50));
-      const captured = await win.webContents.capturePage({ x: 0, y: 0, width, height: TRAY_TEXT_HEIGHT_PX });
-      const image = nativeImage.createFromBuffer(captured.toPNG(), { scaleFactor: screen.getPrimaryDisplay().scaleFactor });
+      const captured = await win.webContents.capturePage({ x: 0, y: 0, width, height });
+      const image = nativeImage.createFromBuffer(captured.toPNG(), { scaleFactor: TRAY_TEXT_SCALE });
       image.setTemplateImage(true);
       return image;
     } finally {
