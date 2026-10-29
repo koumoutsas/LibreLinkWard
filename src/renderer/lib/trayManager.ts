@@ -37,6 +37,7 @@ interface TrayManagerState {
   targetHigh: number;
   isCreated: boolean;
   trendArrow: number;
+  trayTitle: string;
   readings: { name: string; value: number; targetLow?: number; targetHigh?: number }[];
 }
 
@@ -64,6 +65,7 @@ class TrayManager {
     isCreated: false,
     trendArrow: 3,
     readings: [],
+    trayTitle: '0',
   };
 
   private tooltipWindow: BrowserWindow | null = null;
@@ -132,7 +134,7 @@ class TrayManager {
     }
   }
 
-  /** Badge shows the highest reading; the menu lists every patient's latest. */
+  /** Title shows the lowest and highest reading (one value for one patient); the menu lists every patient's latest. */
   public updateReadings(readings: TrayReading[], unit: string): void {
     if (readings.length === 0) return;
     const convert = (mgdl: number) => (unit === 'mmol/L' ? Math.round((mgdl / 18) * 10) / 10 : Math.round(mgdl));
@@ -143,6 +145,9 @@ class TrayManager {
       targetLow: r.targetLow,
       targetHigh: r.targetHigh,
     }));
+    const lowest = readings.reduce((a, b) => (b.mgdl < a.mgdl ? b : a));
+    const fmt = (mgdl: number) => this.formatDisplayNumber(this.clampNumber(convert(mgdl)));
+    this.state.trayTitle = readings.length > 1 ? `${fmt(lowest.mgdl)}–${fmt(highest.mgdl)}` : fmt(highest.mgdl);
     this.updateTrayNumber(convert(highest.mgdl), unit, highest.targetLow, highest.targetHigh);
   }
 
@@ -493,8 +498,8 @@ class TrayManager {
     try {
       const newIcon = this.createIconFromFile();
       this.state.tray.setImage(newIcon);
-      // Text beside the icon in the menu bar (macOS/Linux): the highest reading.
-      this.state.tray.setTitle(this.state.displayValue);
+      // Text beside the icon in the menu bar (macOS/Linux): lowest–highest reading.
+      this.state.tray.setTitle(this.state.trayTitle);
       this.updateTooltipContent();
       this.updateTrayContextMenu();
       this.notifyRenderer();
