@@ -38,9 +38,11 @@ const toDraft = (config: AlarmConfig, unit: string): Draft => ({
 export default function SettingsPatientAlarmsPage() {
   const { patientId } = useParams();
   const unit = useAuthStore((s) => s.resultUnit);
-  const { patients } = usePatients();
+  const { patients, accounts = [] } = usePatients();
   const { config, update } = useAlarmConfig(patientId);
   const patient = patients.find((p) => p.patientId === patientId);
+  // Uploading a Nightscout-sourced patient back to a site would be circular.
+  const fromNightscout = accounts.find((a) => a.id === patient?.accountId)?.kind === 'nightscout';
 
   // Edits stay in the draft until Save is pressed.
   const [draft, setDraft] = useState<Draft>();
@@ -128,7 +130,7 @@ export default function SettingsPatientAlarmsPage() {
             <Button variant="ghost" onClick={() => window.electron.ipcRenderer.invoke('alarms:reset', patientId)}>
               Reset to sensor defaults
             </Button>
-            {patientId && <NightscoutSettings patientId={patientId} />}
+            {patientId && !fromNightscout && <NightscoutSettings patientId={patientId} />}
           </>
         )}
       </div>
