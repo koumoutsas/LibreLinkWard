@@ -160,6 +160,7 @@ class TrayManager {
     this.state.trayTitle = '';
     if (!this.state.tray || !this.state.isCreated) return;
     this.state.tray.setTitle('');
+    this.state.tray.setImage(this.getTrayImage());
     this.updateTooltipContent();
     this.updateTrayContextMenu();
   }
@@ -213,6 +214,13 @@ class TrayManager {
       const trayIcon = this.createSimpleIcon();
       this.createTrayInstance(trayIcon);
     }
+  }
+
+  /** On macOS the readings are shown as text alone; the icon is only used when there is no text. */
+  private getTrayImage(): Electron.NativeImage {
+    return process.platform === 'darwin' && this.state.trayTitle
+      ? nativeImage.createEmpty()
+      : this.createIconFromFile();
   }
 
   private createIconFromFile(): Electron.NativeImage {
@@ -507,8 +515,7 @@ class TrayManager {
     if (!this.state.tray || !this.state.isCreated) return;
 
     try {
-      const newIcon = this.createIconFromFile();
-      this.state.tray.setImage(newIcon);
+      this.state.tray.setImage(this.getTrayImage());
       // Text beside the icon in the menu bar (macOS/Linux): lowest–highest reading.
       this.state.tray.setTitle(this.state.trayTitle);
       this.updateTooltipContent();
