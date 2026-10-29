@@ -16,6 +16,9 @@ export type AccountInfo = {
   username: string
   kind: 'linkup' | 'nightscout'
   status: AccountStatus
+  /** Nightscout sites only; the secret itself is never included. */
+  url?: string
+  hasSecret?: boolean
 }
 
 type ReadingSource = Pick<LinkUpClient, 'getConnections' | 'getGraph'>
@@ -31,6 +34,14 @@ export type PollingServiceDeps = {
   intervalMs?: number
   /** Id generator for new logins; injectable for tests. */
   newId?: () => string
+}
+
+const URL_ERROR = 'The URL must start with http:// or https://'
+
+/** The site URL without trailing slashes, or undefined when it is not http(s). */
+const normalizeUrl = (raw: string) => {
+  const url = raw.trim().replace(/\/+$/, '')
+  return /^https?:\/\//i.test(url) ? url : undefined
 }
 
 /**
@@ -66,6 +77,7 @@ export class PollingService {
       username: a.kind === 'nightscout' ? a.name : a.username,
       kind: a.kind === 'nightscout' ? 'nightscout' : 'linkup',
       status: this.accountStatus.get(a.id) ?? 'running',
+      ...(a.kind === 'nightscout' && { url: a.url, hasSecret: !!a.apiSecret }),
     }))
   }
 
@@ -108,8 +120,8 @@ export class PollingService {
     apiSecret?: string
     name?: string
   }): Promise<{ ok: true } | { ok: false; error: string }> {
-    const url = input.url.trim().replace(/\/+$/, '')
-    if (!/^https?:\/\//i.test(url)) return { ok: false, error: 'The URL must start with http:// or https://' }
+    const url = normalizeUrl(input.url)
+    if (!url) return { ok: false, error: URL_ERROR }
     const account: NightscoutAccount = {
       id: (this.deps.newId ?? randomUUID)(),
       kind: 'nightscout',
@@ -125,6 +137,41 @@ export class PollingService {
     }
     this.begin(account)
     return { ok: true }
+  }
+
+  /**
+   * Changes a Nightscout site's URL, secret or name after checking the new
+   * settings. A blank secret keeps the stored one. The view keeps its id, so
+   * its alarms and Nightscout settings survive; a rejected secret is cleared.
+   */
+  async updateNightscout(
+    id: string,
+    input: { url: string; apiSecret?: string; name?: string },
+  ): Promise<{ ok: true } | { ok: false; error: string }> {
+    const prev = this.accounts.get(id)
+    if (prev?.kind !== 'nightscout') return { ok: false, error: 'Unknown Nightscout site' }
+    const url = normalizeUrl(input.url)
+    if (!url) return { ok: false, error: URL_ERROR }
+    const account: NightscoutAccount = {
+      ...prev,
+      url,
+      apiSecret: input.apiSecret || prev.apiSecret,
+      name: input.name?.trim() || new URL(url).host,
+    }
+    try {
+      await new NightscoutClient(account).testConnection()
+      this.deps.credentials.saveAll([...this.accounts.values()].map((a) => (a.id === id ? account : a)))
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) }
+    }
+    this.begin(account)
+    return { ok: true }
+  }
+
+  /** The stored secret of a Nightscout site, for an explicit reveal in settings. */
+  getNightscoutSecret(id: string): string {
+    const a = this.accounts.get(id)
+    return a?.kind === 'nightscout' ? a.apiSecret : ''
   }
 
   /** Removes one login and all of its patients. */

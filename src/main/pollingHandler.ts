@@ -69,6 +69,14 @@ export const registerPollingHandler = () => {
     'linkup:add-nightscout',
     (_e, input: { url: string; apiSecret?: string; name?: string }) => service!.addNightscout(input),
   )
+  ipcMain.handle(
+    'linkup:update-nightscout',
+    (_e, accountId: string, input: { url: string; apiSecret?: string; name?: string }) =>
+      service!.updateNightscout(accountId, input),
+  )
+  ipcMain.handle('linkup:reveal-nightscout-secret', (_e, accountId: string) =>
+    service!.getNightscoutSecret(accountId),
+  )
   ipcMain.handle('linkup:remove-account', (_e, accountId: string) =>
     service!.removeAccount(accountId),
   )
@@ -150,6 +158,8 @@ export const destroyPollingHandler = () => {
     'linkup:sign-in',
     'linkup:remove-account',
     'linkup:add-nightscout',
+    'linkup:update-nightscout',
+    'linkup:reveal-nightscout-secret',
     'linkup:get-state',
     'alarms:get',
     'alarms:set',

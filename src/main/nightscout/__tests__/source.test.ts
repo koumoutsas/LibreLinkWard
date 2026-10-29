@@ -170,7 +170,9 @@ describe('PollingService with a Nightscout source', () => {
       { id: 'ns1', kind: 'nightscout', url: 'https://ns.test', apiSecret: 's', name: 'Ann' },
     ])
     await flush()
-    expect(service.getAccounts()).toEqual([{ id: 'ns1', username: 'Ann', kind: 'nightscout', status: 'running' }])
+    expect(service.getAccounts()).toEqual([
+      { id: 'ns1', username: 'Ann', kind: 'nightscout', status: 'running', url: 'https://ns.test', hasSecret: true },
+    ])
     expect(patients.getState().patients['ns1~nightscout']).toMatchObject({ name: 'Ann', accountId: 'ns1' })
     expect(patients.getState().patients['ns1~nightscout'].latest?.ValueInMgPerDl).toBe(105)
     service.stop()
@@ -184,5 +186,53 @@ describe('PollingService with a Nightscout source', () => {
     expect(credentials.saveAll.mock.calls[0][0][0].name).toBe('ns.test:8443')
     service.stop()
     spy.mockRestore()
+  })
+
+  describe('updateNightscout', () => {
+    const added = async () => {
+      const ctx = setup()
+      const spy = jest.spyOn(NightscoutClient.prototype, 'testConnection').mockResolvedValue()
+      await ctx.service.addNightscout({ url: 'https://ns.test', apiSecret: 's', name: 'Ann' })
+      await flush()
+      ctx.credentials.saveAll.mockClear()
+      return { ...ctx, spy }
+    }
+
+    it('changes the URL and name, keeps the secret and the view id', async () => {
+      const { service, credentials, spy } = await added()
+      expect(await service.updateNightscout('ns1', { url: 'https://new.test/', name: ' Bob ' })).toEqual({ ok: true })
+      expect(credentials.saveAll).toHaveBeenCalledWith([
+        { id: 'ns1', kind: 'nightscout', url: 'https://new.test', apiSecret: 's', name: 'Bob' },
+      ])
+      expect(service.getNightscoutSecret('ns1')).toBe('s')
+      service.stop()
+      spy.mockRestore()
+    })
+
+    it('replaces the secret when one is given', async () => {
+      const { service, spy } = await added()
+      await service.updateNightscout('ns1', { url: 'https://ns.test', apiSecret: 'new' })
+      expect(service.getNightscoutSecret('ns1')).toBe('new')
+      service.stop()
+      spy.mockRestore()
+    })
+
+    it('keeps the old settings when the new ones do not connect', async () => {
+      const { service, credentials, spy } = await added()
+      spy.mockRejectedValueOnce(new Error('401'))
+      expect(await service.updateNightscout('ns1', { url: 'https://bad.test' })).toEqual({ ok: false, error: '401' })
+      expect(credentials.saveAll).not.toHaveBeenCalled()
+      expect(service.getAccounts()[0]).toMatchObject({ url: 'https://ns.test' })
+      service.stop()
+      spy.mockRestore()
+    })
+
+    it('rejects a non-http URL and unknown ids', async () => {
+      const { service, spy } = await added()
+      expect((await service.updateNightscout('ns1', { url: 'ns.test' })).ok).toBe(false)
+      expect((await service.updateNightscout('nope', { url: 'https://ns.test' })).ok).toBe(false)
+      service.stop()
+      spy.mockRestore()
+    })
   })
 })

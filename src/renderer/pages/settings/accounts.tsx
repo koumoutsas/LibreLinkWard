@@ -3,6 +3,7 @@ import SettingsLayout from '@/layouts/settings-layout';
 import { Button } from '@/components/ui/button';
 import { PatientAlarms } from '@/components/patient-alarms';
 import { NightscoutSettings } from '@/components/nightscout-settings';
+import { NightscoutSiteSettings } from '@/components/nightscout-site-settings';
 import { usePatients } from '@/hooks/usePatients';
 import { useTranslation } from 'react-i18next';
 
@@ -31,6 +32,7 @@ export default function SettingsAccountsPage() {
                 {t('Logout')}
               </Button>
             </div>
+            {account.kind === 'nightscout' && <NightscoutSiteSettings key={account.id} account={account} />}
             {patients
               .filter((p) => p.accountId === account.id)
               .map((p) => (
