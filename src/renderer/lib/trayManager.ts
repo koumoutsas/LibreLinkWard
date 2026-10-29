@@ -182,6 +182,7 @@ class TrayManager {
     this.textImage = null;
     this.textRenderId++;
     this.state.tray.setTitle('');
+    if (process.platform === 'linux') this.state.tray.setToolTip('');
     this.state.tray.setImage(this.getTrayImage());
     this.updateTooltipContent();
     this.updateTrayContextMenu();
@@ -238,14 +239,19 @@ class TrayManager {
     }
   }
 
+  /** macOS and Linux draw the readings as an image; Linux trays (KDE's StatusNotifier) ignore setTitle. */
+  private rendersTextImage(): boolean {
+    return process.platform === 'darwin' || process.platform === 'linux';
+  }
+
   /** On macOS the readings are shown as text alone; the icon is only used when there is no text. */
   private getTrayImage(): Electron.NativeImage {
-    return process.platform === 'darwin' && this.state.trayTitle && this.textImage
+    return this.rendersTextImage() && this.state.trayTitle && this.textImage
       ? this.textImage
       : this.createIconFromFile();
   }
 
-  /** Draws the readings as text in a hidden window; black on transparent, tinted by macOS as a template image. */
+  /** Draws the readings as text in a hidden window. macOS: black on transparent, tinted as a template image. Linux: white on a pill coloured by glucose level, readable on any panel theme. */
   private async renderTextImage(text: string): Promise<Electron.NativeImage> {
     const win = new BrowserWindow({
       show: false,
@@ -255,10 +261,14 @@ class TrayManager {
       height: TRAY_TEXT_HEIGHT_PX * TRAY_TEXT_SCALE,
       webPreferences: { offscreen: true, contextIsolation: true },
     });
+    const linux = process.platform === 'linux';
     try {
-      const html = `<body style="margin:0;background:transparent;overflow:hidden"><span id="t" style="display:inline-block;white-space:nowrap;`
-        + `font:500 ${TRAY_TEXT_FONT_PX * TRAY_TEXT_SCALE}px/${TRAY_TEXT_HEIGHT_PX * TRAY_TEXT_SCALE}px -apple-system,BlinkMacSystemFont,sans-serif;`
-        + `font-variant-numeric:tabular-nums;color:#000">${this.escapeHtml(text)}</span></body>`;
+      const pill = linux
+        ? `background:${this.rgbToCss(this.getBackgroundColorForGlucoseLevel(this.state.currentNumber))};border-radius:${6 * TRAY_TEXT_SCALE}px;padding:0 ${4 * TRAY_TEXT_SCALE}px;`
+        : '';
+      const html = `<body style="margin:0;background:transparent;overflow:hidden"><span id="t" style="display:inline-block;white-space:nowrap;${pill}`
+        + `font:${linux ? 700 : 500} ${TRAY_TEXT_FONT_PX * TRAY_TEXT_SCALE}px/${TRAY_TEXT_HEIGHT_PX * TRAY_TEXT_SCALE}px -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;`
+        + `font-variant-numeric:tabular-nums;color:${linux ? '#fff' : '#000'}">${this.escapeHtml(text)}</span></body>`;
       await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
       const width = Math.ceil(await win.webContents.executeJavaScript('document.getElementById("t").getBoundingClientRect().width'));
       const height = TRAY_TEXT_HEIGHT_PX * TRAY_TEXT_SCALE;
@@ -266,7 +276,7 @@ class TrayManager {
       await new Promise((resolve) => setTimeout(resolve, 50));
       const captured = await win.webContents.capturePage({ x: 0, y: 0, width, height });
       const image = nativeImage.createFromBuffer(captured.toPNG(), { scaleFactor: TRAY_TEXT_SCALE });
-      image.setTemplateImage(true);
+      if (!linux) image.setTemplateImage(true);
       return image;
     } finally {
       win.destroy();
@@ -586,14 +596,14 @@ class TrayManager {
 
     try {
       this.state.tray.setImage(this.getTrayImage());
-      if (process.platform === 'darwin') {
-        // setTitle can't change the font size, so macOS gets the text as an image.
+      if (this.rendersTextImage()) {
+        // setTitle can't change the font size (macOS) or is ignored (Linux), so the text is an image.
         this.state.tray.setTitle('');
         this.updateTextImage();
       } else {
-        // Text beside the icon (Linux): lowest–highest reading.
         this.state.tray.setTitle(this.state.trayTitle);
       }
+      if (process.platform === 'linux') this.state.tray.setToolTip(this.getToolTipText());
       this.updateTooltipContent();
       this.updateTrayContextMenu();
       this.notifyRenderer();
@@ -608,6 +618,13 @@ class TrayManager {
       this.updateTooltipContent();
       this.updateTrayContextMenu();
     }
+  }
+
+  /** Linux trays emit no mouse-enter, so the native tooltip lists the readings instead of the popup. */
+  private getToolTipText(): string {
+    return this.state.readings
+      .map((r) => `${r.name}: ${r.stale ? '--' : `${this.formatDisplayNumber(r.value)} ${this.state.currentUnit} ${this.trendText(r.trend)}`}`)
+      .join('\n');
   }
 
   private updateTrayContextMenu(): void {

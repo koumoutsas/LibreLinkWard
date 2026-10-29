@@ -2,9 +2,10 @@
   "name": "librelinkward",
   "version": "0.1.16",
   "author": {
-    "name": "Yuran Fernando",
-    "email": "yuran93@gmail.com"
+    "name": "Yannis Ioannidis",
+    "email": "jfioannidis@gmail.com"
   },
+  "homepage": "https://github.com/koumoutsas/LibreLinkWard",
   "main": "./.erb/dll/main.bundle.dev.js",
   "scripts": {
     "prebuild": "node ./prebuild/index.mjs",
@@ -267,7 +268,9 @@
       ],
       "icon": "assets/icon.icns",
       "synopsis": "Fetches your blood sugar from LibreLinkUp",
-      "description": "This is a desktop application that fetches your blood sugar from LibreLinkUp. Developed by Crazy Marvin & Contributors, especially Yuran.",
+      "maintainer": "Yannis Ioannidis <jfioannidis@gmail.com>",
+      "vendor": "Yannis Ioannidis",
+      "description": "This is a desktop application that fetches your blood sugar from LibreLinkUp. Developed by Yannis Ioannidis, based on LibreLinkUp Desktop by Crazy Marvin & Contributors.",
       "category": "Utility",
       "mimeTypes": [
         "application/x-librelinkup"
