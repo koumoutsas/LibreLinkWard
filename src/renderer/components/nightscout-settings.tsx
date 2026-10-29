@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ToggleSwitch } from '@/components/ui/toggle-switch';
+import { EyeClosedIcon, EyeOpenIcon } from '@radix-ui/react-icons';
 
 type NightscoutState = {
   enabled: boolean;
@@ -19,6 +20,8 @@ export function NightscoutSettings({ patientId }: { patientId: string }) {
   const [url, setUrl] = useState('');
   const [secret, setSecret] = useState('');
   const [device, setDevice] = useState('');
+  const [showSecret, setShowSecret] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [testResult, setTestResult] = useState<string>();
 
   const refresh = useCallback(async () => {
@@ -42,6 +45,15 @@ export function NightscoutSettings({ patientId }: { patientId: string }) {
   const save = async (patch: Record<string, unknown>) => {
     await ipc().invoke('nightscout:set', patientId, patch);
     await refresh();
+  };
+
+  const dirty = url !== state.url || device !== state.deviceName || secret !== '';
+
+  // Edits stay in the form until Save is pressed; a blank secret keeps the stored one.
+  const saveAll = async () => {
+    await save({ url, deviceName: device, ...(secret && { apiSecret: secret }) });
+    setSecret('');
+    setSaved(true);
   };
 
   const test = async () => {
@@ -71,32 +83,52 @@ export function NightscoutSettings({ patientId }: { patientId: string }) {
             aria-label="Nightscout URL"
             placeholder="https://my-site.example.com"
             value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            onBlur={() => save({ url })}
+            onChange={(e) => {
+              setUrl(e.target.value);
+              setSaved(false);
+            }}
           />
         </div>
         <div>
           <p className="text-foreground/30 text-xs mb-2">API secret</p>
-          <Input
-            type="password"
-            aria-label="Nightscout API secret"
-            placeholder={state.hasSecret ? '•••••••• (saved)' : ''}
-            value={secret}
-            onChange={(e) => setSecret(e.target.value)}
-            onBlur={() => secret && save({ apiSecret: secret }).then(() => setSecret(''))}
-          />
+          <div className="flex gap-2">
+            <Input
+              type={showSecret ? 'text' : 'password'}
+              aria-label="Nightscout API secret"
+              placeholder={state.hasSecret ? '•••••••• (saved)' : ''}
+              value={secret}
+              onChange={(e) => {
+                setSecret(e.target.value);
+                setSaved(false);
+              }}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              aria-label={showSecret ? 'Hide API secret' : 'Show API secret'}
+              onClick={() => setShowSecret((v) => !v)}
+            >
+              {showSecret ? <EyeClosedIcon /> : <EyeOpenIcon />}
+            </Button>
+          </div>
         </div>
         <div>
           <p className="text-foreground/30 text-xs mb-2">Device name</p>
           <Input
             aria-label="Nightscout device name"
             value={device}
-            onChange={(e) => setDevice(e.target.value)}
-            onBlur={() => save({ deviceName: device })}
+            onChange={(e) => {
+              setDevice(e.target.value);
+              setSaved(false);
+            }}
           />
         </div>
       </div>
       <div className="flex items-center gap-4">
+        <Button onClick={saveAll} disabled={!dirty}>
+          Save
+        </Button>
+        {saved && !dirty && <span className="text-xs text-muted-foreground">Saved</span>}
         <Button variant="ghost" onClick={test}>
           Test connection
         </Button>
