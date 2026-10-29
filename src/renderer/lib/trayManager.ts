@@ -30,6 +30,8 @@ export interface TrayReading {
   targetHigh?: number;
   /** LibreLinkUp TrendArrow, 1 (falling fast) to 5 (rising fast). */
   trend?: number;
+  /** No data from the sensor for too long; shown as "--" and left out of min/max. */
+  stale?: boolean;
 }
 
 interface TrayManagerState {
@@ -44,7 +46,7 @@ interface TrayManagerState {
   isCreated: boolean;
   trendArrow: number;
   trayTitle: string;
-  readings: { name: string; value: number; targetLow?: number; targetHigh?: number; trend?: number }[];
+  readings: { name: string; value: number; targetLow?: number; targetHigh?: number; trend?: number; stale?: boolean }[];
 }
 
 const TREND_TEXT: Record<number, string> = { 1: '↓', 2: '↘', 3: '→', 4: '↗', 5: '↑' };
@@ -152,18 +154,23 @@ class TrayManager {
       return;
     }
     const convert = (mgdl: number) => (unit === 'mmol/L' ? Math.round((mgdl / 18) * 10) / 10 : Math.round(mgdl));
-    const highest = readings.reduce((a, b) => (b.mgdl > a.mgdl ? b : a));
+    // Stale patients are left out of min/max; if none are fresh the title is "--".
+    const fresh = readings.filter((r) => !r.stale);
+    const ranged = fresh.length > 0 ? fresh : readings;
+    const highest = ranged.reduce((a, b) => (b.mgdl > a.mgdl ? b : a));
     this.state.readings = readings.map((r) => ({
       name: r.name,
       value: this.clampNumber(convert(r.mgdl)),
       targetLow: r.targetLow,
       targetHigh: r.targetHigh,
       trend: r.trend,
+      stale: r.stale,
     }));
-    const lowest = readings.reduce((a, b) => (b.mgdl < a.mgdl ? b : a));
+    const lowest = ranged.reduce((a, b) => (b.mgdl < a.mgdl ? b : a));
     const fmt = (r: TrayReading) =>
       `${this.formatDisplayNumber(this.clampNumber(convert(r.mgdl)))}${this.trendText(r.trend)}`;
-    this.state.trayTitle = readings.length > 1 ? `${fmt(lowest)}–${fmt(highest)}` : fmt(highest);
+    this.state.trayTitle =
+      fresh.length === 0 ? '--' : fresh.length > 1 ? `${fmt(lowest)}–${fmt(highest)}` : fmt(highest);
     this.updateTrayNumber(convert(highest.mgdl), unit, highest.targetLow, highest.targetHigh);
   }
 
@@ -490,9 +497,14 @@ class TrayManager {
     const rows = readings.length
       ? readings
           .map((r) => {
-            const color = this.rgbToCss(this.getBackgroundColorForGlucoseLevel(r.value, r.targetLow, r.targetHigh));
+            const color = r.stale
+              ? 'rgb(107, 114, 128)'
+              : this.rgbToCss(this.getBackgroundColorForGlucoseLevel(r.value, r.targetLow, r.targetHigh));
+            const text = r.stale
+              ? '--'
+              : `${this.formatDisplayNumber(r.value)} ${this.escapeHtml(currentUnit)} ${this.trendText(r.trend)}`;
             return `<div class="row"><span class="name">${this.escapeHtml(r.name)}</span>` +
-              `<span class="value" style="background:${color}">${this.formatDisplayNumber(r.value)} ${this.escapeHtml(currentUnit)} ${this.trendText(r.trend)}</span></div>`;
+              `<span class="value" style="background:${color}">${text}</span></div>`;
           })
           .join('')
       : `<div class="row"><span class="name">No readings</span></div>`;
@@ -602,7 +614,9 @@ class TrayManager {
     if (!this.state.tray) return;
 
     const readingItems: Electron.MenuItemConstructorOptions[] = this.state.readings.map((r) => ({
-      label: `${r.name}: ${this.formatDisplayNumber(r.value)} ${this.state.currentUnit} ${this.trendText(r.trend)}`,
+      label: r.stale
+        ? `${r.name}: --`
+        : `${r.name}: ${this.formatDisplayNumber(r.value)} ${this.state.currentUnit} ${this.trendText(r.trend)}`,
     }));
 
     const contextMenuTemplate: Electron.MenuItemConstructorOptions[] = [
