@@ -5,6 +5,8 @@ import * as fs from 'fs';
 // Constants
 const MAX_DISPLAY_NUMBER = 999;
 const MIN_DISPLAY_NUMBER = 0;
+const TOOLTIP_ROW_HEIGHT = 28;
+const TOOLTIP_PADDING = 12;
 
 const LOW = 70;  // Hypoglycemia threshold (mg/dL)
 const HIGH = 240; // Hyperglycemia threshold (mg/dL)
@@ -15,6 +17,13 @@ interface RGBAColor {
   g: number;
   b: number;
   a?: number;
+}
+
+export interface TrayReading {
+  name: string;
+  mgdl: number;
+  targetLow?: number;
+  targetHigh?: number;
 }
 
 interface TrayManagerState {
@@ -28,6 +37,7 @@ interface TrayManagerState {
   targetHigh: number;
   isCreated: boolean;
   trendArrow: number;
+  readings: { name: string; value: number; targetLow?: number; targetHigh?: number }[];
 }
 
 const TREND_ARROW_MAP: Record<number, string> = {
@@ -53,6 +63,7 @@ class TrayManager {
     targetHigh: 180,
     isCreated: false,
     trendArrow: 3,
+    readings: [],
   };
 
   private tooltipWindow: BrowserWindow | null = null;
@@ -119,6 +130,20 @@ class TrayManager {
       this.tooltipWindow.destroy();
       this.tooltipWindow = null;
     }
+  }
+
+  /** Badge shows the highest reading; the menu lists every patient's latest. */
+  public updateReadings(readings: TrayReading[], unit: string): void {
+    if (readings.length === 0) return;
+    const convert = (mgdl: number) => (unit === 'mmol/L' ? Math.round((mgdl / 18) * 10) / 10 : Math.round(mgdl));
+    const highest = readings.reduce((a, b) => (b.mgdl > a.mgdl ? b : a));
+    this.state.readings = readings.map((r) => ({
+      name: r.name,
+      value: this.clampNumber(convert(r.mgdl)),
+      targetLow: r.targetLow,
+      targetHigh: r.targetHigh,
+    }));
+    this.updateTrayNumber(convert(highest.mgdl), unit, highest.targetLow, highest.targetHigh);
   }
 
   public updateTrayNumber(
@@ -345,8 +370,8 @@ class TrayManager {
     if (this.tooltipWindow) return;
 
     this.tooltipWindow = new BrowserWindow({
-      width: 200,
-      height: 120,
+      width: 260,
+      height: TOOLTIP_PADDING + TOOLTIP_ROW_HEIGHT,
       show: false,
       frame: false,
       resizable: false,
@@ -370,84 +395,63 @@ class TrayManager {
     });
   }
 
+  private escapeHtml(text: string): string {
+    return text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+  }
+
   private getTooltipHTML(): string {
-    const { displayValue, currentUnit, currentNumber, trendArrow } = this.state;
-
-    // Get background color and convert to CSS string
-    const bgColor = this.rgbToCss(this.getBackgroundColorForGlucoseLevel(currentNumber));
-    const textColor = this.rgbToCss(this.getColorForGlucoseLevel(currentNumber));
-
+    const { displayValue, currentUnit, currentNumber, trendArrow, readings } = this.state;
     const trendSvg = TREND_ARROW_MAP[trendArrow] || DEFAULT_ARROW_SVG;
 
-    return `
+    const rows = readings.length
+      ? readings
+          .map((r) => {
+            const color = this.rgbToCss(this.getBackgroundColorForGlucoseLevel(r.value, r.targetLow, r.targetHigh));
+            return `<div class="row"><span class="name">${this.escapeHtml(r.name)}</span>` +
+              `<span class="value" style="background:${color}">${this.formatDisplayNumber(r.value)} ${this.escapeHtml(currentUnit)}</span></div>`;
+          })
+          .join('')
+      : `<div class="row"><span class="name"></span><span class="value" style="background:${this.rgbToCss(
+          this.getBackgroundColorForGlucoseLevel(currentNumber),
+        )}">${displayValue} ${this.escapeHtml(currentUnit)}</span></div>`;
+
+    return encodeURIComponent(`
   <!DOCTYPE html>
   <html>
   <head>
     <meta charset="UTF-8">
     <style>
-      html, body {
-        margin: 0;
-        padding: 0;
-        height: 100%;
-      }
-
+      html, body { margin: 0; padding: 0; height: 100%; }
       body {
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        background: ${bgColor};
-        color: ${textColor};
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-direction: column;
+        background: #1f2937;
+        color: #ffffff;
+        padding: 6px 8px;
         box-sizing: border-box;
         user-select: none;
         -webkit-user-select: none;
+        overflow: hidden;
       }
-
-      .glucose-value {
-        font-size: 24px;
+      .row {
         display: flex;
         align-items: center;
-        justify-content: center;
-        gap: 8px;
-        text-align: center;
+        justify-content: space-between;
+        gap: 12px;
+        height: ${TOOLTIP_ROW_HEIGHT}px;
+        font-size: 15px;
       }
-
-      .trend-arrow-container {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.25);
-      }
-
-      .trend-arrow {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 20px;
-        height: 20px;
-      }
-
-      .trend-arrow svg {
-        width: 100%;
-        height: 100%;
-        color: white;
+      .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .value {
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 6px;
+        white-space: nowrap;
+        color: #ffffff;
       }
     </style>
   </head>
-  <body>
-    <div class="glucose-value">
-      <span>${displayValue}</span>
-      <span>${currentUnit}</span>
-      <div class="trend-arrow-container">
-        <div class="trend-arrow">${trendSvg}</div>
-      </div>
-    </div>
-  </body>
-  </html>`;
+  <body>${rows}</body>
+  </html>`);
   }
 
   private showTooltip(): void {
@@ -477,6 +481,8 @@ class TrayManager {
 
   private updateTooltipContent(): void {
     if (this.tooltipWindow && !this.tooltipWindow.isDestroyed()) {
+      const rows = Math.max(1, this.state.readings.length);
+      this.tooltipWindow.setSize(260, TOOLTIP_PADDING + rows * TOOLTIP_ROW_HEIGHT);
       this.tooltipWindow.loadURL(`data:text/html;charset=utf-8,${this.getTooltipHTML()}`);
     }
   }
@@ -487,6 +493,8 @@ class TrayManager {
     try {
       const newIcon = this.createIconFromFile();
       this.state.tray.setImage(newIcon);
+      // Text beside the icon in the menu bar (macOS/Linux): the highest reading.
+      this.state.tray.setTitle(this.state.displayValue);
       this.updateTooltipContent();
       this.updateTrayContextMenu();
       this.notifyRenderer();
@@ -506,55 +514,29 @@ class TrayManager {
   private updateTrayContextMenu(): void {
     if (!this.state.tray) return;
 
-    let { targetLow, targetHigh } = this.state;
-    let targetUnit = 'mg/dL';
-
-    // Convert targets to mmol/L if current unit is mmol/L
-    if (this.state.currentUnit === 'mmol/L') {
-      targetLow = Math.round((targetLow / 18) * 10) / 10;
-      targetHigh = Math.round((targetHigh / 18) * 10) / 10;
-      targetUnit = 'mmol/L';
-    }
-
-    const isWindowVisible = this.state.mainWindow
-      ? this.state.mainWindow.isVisible() && !this.state.mainWindow.isDestroyed()
-      : false;
+    const readingItems: Electron.MenuItemConstructorOptions[] = this.state.readings.length
+      ? this.state.readings.map((r) => ({
+          label: `${r.name}: ${this.formatDisplayNumber(r.value)} ${this.state.currentUnit}`,
+        }))
+      : [{ label: `Blood Sugar: ${this.state.displayValue} ${this.state.currentUnit}` }];
 
     const contextMenuTemplate: Electron.MenuItemConstructorOptions[] = [
+      ...readingItems,
+      { type: 'separator' },
       {
-        label: `Blood Sugar: ${this.state.displayValue} ${this.state.currentUnit}`,
-        enabled: false,
-      },
-      {
-        label: `Target Range: ${targetLow}-${targetHigh} ${targetUnit}`,
-        enabled: false,
+        label: 'Bring to Front',
+        click: () => {
+          const win = this.state.mainWindow;
+          if (!win || win.isDestroyed()) return;
+          if (win.isMinimized()) win.restore();
+          win.show();
+          app.focus({ steal: true });
+          win.focus();
+        },
       },
       { type: 'separator' },
+      { label: 'Quit', click: () => app.quit() },
     ];
-
-    if (!isWindowVisible) {
-      contextMenuTemplate.push({
-        label: 'Show App',
-        click: () => {
-          this.state.mainWindow?.show();
-          this.state.mainWindow?.focus();
-          setTimeout(() => this.updateTrayContextMenu(), 100);
-        }
-      });
-    } else {
-      contextMenuTemplate.push({
-        label: 'Hide App',
-        click: () => {
-          this.state.mainWindow?.hide();
-          setTimeout(() => this.updateTrayContextMenu(), 100);
-        }
-      });
-    }
-
-    contextMenuTemplate.push(
-      { type: 'separator' },
-      { label: 'Quit', click: () => app.quit() }
-    );
 
     const contextMenu = Menu.buildFromTemplate(contextMenuTemplate);
     this.state.tray.setContextMenu(contextMenu);
@@ -570,9 +552,9 @@ class TrayManager {
   }
 
   // Color utility methods
-  private getBackgroundColorForGlucoseLevel(level: number): RGBAColor {
-    const targetLow = this.state.targetLow;
-    const targetHigh = this.state.targetHigh;
+  private getBackgroundColorForGlucoseLevel(level: number, low?: number, high?: number): RGBAColor {
+    const targetLow = low ?? this.state.targetLow;
+    const targetHigh = high ?? this.state.targetHigh;
 
     // Convert level to mg/dL for consistent comparison if unit is mmol/L
     const levelInMgPerDl = this.state.currentUnit === 'mmol/L' ? level * 18 : level;
@@ -608,6 +590,8 @@ const trayManager = new TrayManager();
 
 // Export public API
 export const createTray = (window: BrowserWindow) => trayManager.createTray(window);
+export const updateTrayReadings = (readings: TrayReading[], unit: string) =>
+  trayManager.updateReadings(readings, unit);
 export const updateTrayNumber = (newNumber: number, unit: string, targetLow?: number, targetHigh?: number, trendArrow?: number) =>
   trayManager.updateTrayNumber(newNumber, unit, targetLow, targetHigh, trendArrow);
 export const updateTrayTargets = (targetLow: number, targetHigh: number) =>

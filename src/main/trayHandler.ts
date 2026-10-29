@@ -1,18 +1,19 @@
 import { ipcMain, BrowserWindow } from "electron";
-import { createTray, updateTrayNumber, destroyTray } from './../renderer/lib/trayManager';
+import { createTray, hasTray, updateTrayReadings, destroyTray, TrayReading } from './../renderer/lib/trayManager';
 
 let mainWindow: BrowserWindow | null = null;
 
 export const registerTrayHandler = () => {
 
-  ipcMain.on('update-tray-number', (event, number: number, unit: string, targetLow?: number, targetHigh?: number) => {
+  ipcMain.on('update-tray-readings', (event, readings: TrayReading[], unit: string) => {
     try {
-      updateTrayNumber(number, unit, targetLow, targetHigh);
+      if (!hasTray() && mainWindow) createTray(mainWindow);
+      updateTrayReadings(readings, unit);
     } catch (error) {
-      console.error('Error updating tray number:', error);
+      console.error('Error updating tray readings:', error);
       if (mainWindow) {
         createTray(mainWindow);
-        updateTrayNumber(number, unit, targetLow, targetHigh);
+        updateTrayReadings(readings, unit);
       }
     }
   });
@@ -29,7 +30,7 @@ export const registerTrayHandler = () => {
 };
 
 export const destroyTrayHandler = () => {
-  ipcMain.removeAllListeners('update-tray-number');
+  ipcMain.removeAllListeners('update-tray-readings');
   ipcMain.removeAllListeners('create-tray');
   ipcMain.removeAllListeners('destroy-tray');
 };

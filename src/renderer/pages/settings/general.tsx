@@ -12,9 +12,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useAuthStore } from "@/stores/auth"
-import { countries, languages, themes, resultUnits, windowModes } from "@/config/app"
+import { countries, languages, themes, resultUnits } from "@/config/app"
 import { useTranslation } from "react-i18next"
-import { setRedirectTo, sendRefreshPrimaryWindow, setWindowMode, getLocalStorageWindowMode, getTrayVisibility, setTrayVisibility} from "@/lib/utils"
+import { setRedirectTo, sendRefreshPrimaryWindow, getTrayVisibility, setTrayVisibility} from "@/lib/utils"
 import { useEffect, useState, useCallback  } from 'react';
 
 export default function SettingsGeneralPage() {
@@ -44,19 +44,6 @@ export default function SettingsGeneralPage() {
     setResultUnit(value);
     sendRefreshPrimaryWindow();
   }
-
-  const handleSetWindowMode = (value: string) => {
-    setWindowMode(value);
-  }
-
-  const [currentWindowMode, setCurrentWindowMode] = useState<null | string>(null);
-  useEffect(() => {
-    const fetchWindowMode = async () => {
-      const mode = await getLocalStorageWindowMode();
-      setCurrentWindowMode(mode);
-    };
-    fetchWindowMode();
-  }, []);
 
   const [trayVisible, setTrayVisible] = useState<boolean>(true);
 
@@ -121,22 +108,6 @@ export default function SettingsGeneralPage() {
               {languages.map(lan => (
                 <SelectItem value={lan.value} key={lan.value}>
                   {t(lan.label)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex flex-row justify-between gap-4">
-          <p className="text-gray-400">{t('WindowMode')}</p>
-          <Select key={currentWindowMode} onValueChange={handleSetWindowMode} defaultValue={currentWindowMode ?? 'windowed'}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder={("SelectMode")} />
-            </SelectTrigger>
-            <SelectContent>
-              {windowModes.map(item => (
-                <SelectItem value={item.value} key={item.value}>
-                  {t(item.label)}
                 </SelectItem>
               ))}
             </SelectContent>

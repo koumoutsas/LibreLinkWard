@@ -14,9 +14,9 @@ export class WindowStateManager {
 
   private state: WindowState;
 
-  constructor(private windowName: string, private defaultState: WindowState, private windowMode: 'overlay' | 'overlayTransparent' | 'windowed') {
+  constructor(private windowName: string, private defaultState: WindowState) {
     const userDataPath = app.getPath('userData');
-    this.stateFilePath = path.join(userDataPath, `${windowName}-${windowMode}-window-state.json`);
+    this.stateFilePath = path.join(userDataPath, `${windowName}-windowed-window-state.json`);
     this.state = this.readState();
   }
 

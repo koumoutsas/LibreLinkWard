@@ -6,7 +6,6 @@ import { app, BrowserWindow, ipcMain, shell } from "electron"
 import MenuBuilder from "./menu"
 import { resolveHtmlPath } from "./util"
 import { WindowStateManager, WindowState } from './windowState';
-import { WindowModeManager } from "./windowMode";
 import { registerWindowHandlers, destroyWindowHandlers } from "./windowHandler";
 import { registerLogoutHandler, destroyLogoutHandler } from "./logoutHandler";
 import { registerRefreshHandler, destroyRefreshHandler } from "./refreshHandler";
@@ -31,35 +30,8 @@ if (process.env.NODE_ENV === 'production') {
   sourceMapSupport.install()
 }
 
-const isDebug =
-  process.env.NODE_ENV === 'development' || process.env.DEBUG_PROD === 'true'
-
-if (isDebug) {
-  require('electron-debug')()
-}
-
-const installExtensions = async () => {
-  const installer = require('electron-devtools-installer')
-  const forceDownload = !!process.env.UPGRADE_EXTENSIONS
-  const extensions = ['REACT_DEVELOPER_TOOLS']
-
-  return installer
-    .default(
-      extensions.map((name) => installer[name]),
-      forceDownload
-    )
-    .catch(console.log)
-}
-
-const windowModeManager = new WindowModeManager('main-window');
-const windowMode = windowModeManager.getWindowMode();
-
 const createWindow = async () => {
-  if (isDebug) {
-    await installExtensions()
-  }
-
-  const windowOptions = getWindowOptions(windowMode);
+  const windowOptions = getWindowOptions();
 
   mainWindow = new BrowserWindow(windowOptions);
 
@@ -71,10 +43,8 @@ const createWindow = async () => {
     height: 728,
   };
 
-  if(windowMode !== 'overlayTransparent') {
-    const windowStateManager = new WindowStateManager('main', defaultWindowState, windowMode);
-    windowStateManager.manage(mainWindow);
-  }
+  const windowStateManager = new WindowStateManager('main', defaultWindowState);
+  windowStateManager.manage(mainWindow);
 
   mainWindow.loadURL(resolveHtmlPath('index.html'))
 
@@ -131,63 +101,22 @@ const createWindow = async () => {
   // new AppUpdater()
 }
 
-const getWindowOptions = (windowMode: 'overlay' | 'windowed' | 'overlayTransparent'): Electron.BrowserWindowConstructorOptions => {
-
-  const RESOURCES_PATH = app.isPackaged
-    ? path.join(process.resourcesPath, 'assets')
-    : path.join(__dirname, '../../assets')
-
-  const getAssetPath = (...paths: string[]): string => {
-    return path.join(RESOURCES_PATH, ...paths)
-  }
-
-  const baseOptions: Electron.BrowserWindowConstructorOptions = {
-    show: false,
-    minWidth: 200,
-    minHeight: 45,
-    // icon: getAssetPath('icon.png'),
-    webPreferences: {
-      webSecurity: false,
-      preload: app.isPackaged
-        ? path.join(__dirname, 'preload.js')
-        : path.join(__dirname, '../../.erb/dll/preload.js'),
-    },
-    resizable: true,
-    movable: true,
-  };
-
-  if (windowMode === 'overlay') {
-    return {
-      ...baseOptions,
-      width: 800,
-      height: 600,
-      alwaysOnTop: true,
-      frame: false,
-    };
-  }
-  if (windowMode === 'overlayTransparent') {
-    return {
-      ...baseOptions,
-      width: 200,
-      height: 45,
-      alwaysOnTop: true,
-      frame: false,
-      transparent: true,
-      resizable: false,
-      hasShadow: false,
-    };
-  }
-  else if (windowMode === 'windowed') {
-    return {
-      ...baseOptions,
-      width: 1024,
-      height: 728,
-      frame: true,
-    };
-  }
-
-  return baseOptions;
-}
+const getWindowOptions = (): Electron.BrowserWindowConstructorOptions => ({
+  show: false,
+  width: 1024,
+  height: 728,
+  minWidth: 200,
+  minHeight: 45,
+  frame: true,
+  webPreferences: {
+    webSecurity: false,
+    preload: app.isPackaged
+      ? path.join(__dirname, 'preload.js')
+      : path.join(__dirname, '../../.erb/dll/preload.js'),
+  },
+  resizable: true,
+  movable: true,
+})
 
 
 /**

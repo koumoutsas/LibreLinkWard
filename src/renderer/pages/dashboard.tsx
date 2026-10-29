@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GearIcon, PlusIcon } from '@radix-ui/react-icons';
 import { BaseLayout } from '@/layouts/base-layout';
@@ -7,24 +7,12 @@ import { AlarmNotifier } from '@/components/alarm-notifier';
 import { PatientCard } from '@/components/patient-card';
 import { AddPatientForm } from '@/components/add-patient-form';
 import { usePatients } from '@/hooks/usePatients';
-import { useAuthStore } from '@/stores/auth';
-import { openNewWindow, setRedirectTo, updateTrayNumber } from '@/lib/utils';
-import { toUnit } from '@/lib/glucose';
+import { openNewWindow, setRedirectTo } from '@/lib/utils';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const unit = useAuthStore((s) => s.resultUnit);
   const { patients, accounts = [], status, loaded } = usePatients();
   const [adding, setAdding] = useState(false);
-
-  // The tray shows a single number, so it only follows a lone patient.
-  const only = patients.length === 1 ? patients[0] : undefined;
-  const trayValue = only?.latest?.ValueInMgPerDl;
-  useEffect(() => {
-    if (trayValue !== undefined) {
-      updateTrayNumber(toUnit(trayValue, unit), only?.targetLow ?? 70, only?.targetHigh ?? 180);
-    }
-  }, [trayValue, unit]);
 
   const openSettings = (path: string) => {
     setRedirectTo(path);

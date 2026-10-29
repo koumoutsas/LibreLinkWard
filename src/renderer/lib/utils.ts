@@ -16,22 +16,6 @@ export async function openNewWindow(path: string, width: number, height: number)
  await window.electron.ipcRenderer.sendMessage('open-new-window', path, width, height)
 }
 
-export async function setWindowMode(mode: string) {
-  await window.electron.ipcRenderer.sendMessage('set-window-mode', mode)
-}
-
-export async function getWindowMode() {
-  return await window.electron.ipcRenderer.invoke('get-window-mode')
-}
-
-export async function setLocalStorageWindowMode(mode: string) {
-  await localStorage.setItem('windowMode', mode);
-}
-
-export async function getLocalStorageWindowMode(): Promise<string> {
-  return await localStorage.getItem('windowMode') as string;
-}
-
 export async function setRedirectTo (path: string) {
   await localStorage.setItem('redirectTo', path)
 }
@@ -117,14 +101,15 @@ export async function getGlucoseValueForTray(token: string, country: string, acc
   }
 }
 
-export function updateTrayNumber(number: number, targetLow?: number, targetHigh?: number) {
+export type TrayReading = { name: string; mgdl: number; targetLow?: number; targetHigh?: number }
+
+/** Sends every monitored patient's latest reading; the tray badge shows the highest. */
+export function updateTrayReadings(readings: TrayReading[]) {
   const trayVisible = localStorage.getItem('trayVisible') !== '0';
   if (!trayVisible) return;
 
   const { resultUnit } = useAuthStore.getState();
-  if (window.electron?.ipcRenderer) {
-    window.electron.ipcRenderer.sendMessage('update-tray-number', number, resultUnit, targetLow, targetHigh);
-  }
+  window.electron?.ipcRenderer?.sendMessage('update-tray-readings', readings, resultUnit);
 }
 
 

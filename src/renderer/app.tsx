@@ -5,11 +5,18 @@ import routes from "@/routes"
 import "@/globals.css"
 import "@/custom.css"
 import "@/i18n/config"
-import { useEffect } from "react"
-import { getWindowMode, setLocalStorageWindowMode } from "@/lib/utils";
+import { useEffect, useMemo } from "react"
+import { useTrayReadings } from "@/hooks/useTrayReadings"
+
+// Own component so patient updates re-render this, not the router below.
+function TrayReadings() {
+  useTrayReadings()
+  return null
+}
 
 export default function App() {
   const token = useAuthStore((state) => state.token)
+  const router = useMemo(() => routes(!!token), [token])
 
   useEffect(() => {
     const handleLogout = () => {
@@ -23,21 +30,10 @@ export default function App() {
     };
   }, []);
 
-
-  useEffect(() => {
-    async function fetchAndStoreWindowMode() {
-      const mode = await getWindowMode();
-      console.log('fetchWindowMode', mode);
-
-      setLocalStorageWindowMode(mode);
-    }
-
-    fetchAndStoreWindowMode();
-  }, []);
-
   return (
     <AnimatePresence>
-      <RouterProvider router={routes(!!token)} />
+      <TrayReadings />
+      <RouterProvider router={router} />
     </AnimatePresence>
   )
 }
