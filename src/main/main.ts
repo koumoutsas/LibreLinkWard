@@ -2,7 +2,7 @@
 import path from "path"
 import { app, BrowserWindow, ipcMain, shell } from "electron"
 // import { autoUpdater } from "electron-updater"
-// import log from "electron-log"
+import log from "electron-log/main"
 import MenuBuilder from "./menu"
 import { resolveHtmlPath } from "./util"
 import { WindowStateManager, WindowState } from './windowState';
@@ -23,6 +23,12 @@ import { destroyTray, hasTray } from './../renderer/lib/trayManager';
 // }
 
 app.setName('LibreLinkWard')
+
+// Writes ~/Library/Logs/LibreLinkWard/main.log (the platform equivalent elsewhere),
+// and routes console output and uncaught errors from the main process into it.
+log.initialize()
+log.errorHandler.startCatching()
+Object.assign(console, log.functions)
 
 let mainWindow: BrowserWindow | null = null
 let isQuitting = false
