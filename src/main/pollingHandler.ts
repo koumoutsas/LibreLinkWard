@@ -1,5 +1,5 @@
 import path from 'path'
-import { app, BrowserWindow, ipcMain, safeStorage } from 'electron'
+import { app, BrowserWindow, ipcMain, Notification, safeStorage } from 'electron'
 import { Credentials } from '../shared/linkup'
 import {
   AlarmConfig,
@@ -45,7 +45,13 @@ export const registerPollingHandler = async () => {
     patients: patientStore,
     alarms: alarmStore,
     onActive: (active) => broadcast('alarms:active', active),
-    onNotify: (n) => broadcast('alarms:notify', n),
+    onNotify: (n) => {
+      broadcast('alarms:notify', n)
+      if (n.kind.startsWith('predicted') && Notification.isSupported()) {
+        const what = n.kind === 'predicted-low' ? 'Low' : 'High'
+        new Notification({ title: n.name, body: `${what} predicted within 30 minutes (now ${n.value ?? '--'} mg/dL)`, silent: true }).show()
+      }
+    },
   })
 
   const nsStore = new NightscoutConfigStore(path.join(dir, 'nightscout.bin'), toSafeStorage(safeStorage))

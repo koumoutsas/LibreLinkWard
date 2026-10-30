@@ -12,6 +12,8 @@ export function AlarmNotifier() {
 
   const onNotify = useCallback(
     async (n: AlarmNotification) => {
+      // Predicted alarms are a shaky estimate: shown as a silent notification only.
+      if (n.kind?.startsWith('predicted')) return
       try {
         triggerWarningAlert({ bringToFrontEnabled, flashWindowEnabled })
         if (!audioAlertEnabled || !n.sound) return

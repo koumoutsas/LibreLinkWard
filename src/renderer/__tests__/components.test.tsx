@@ -102,6 +102,12 @@ describe('AlarmNotifier', () => {
     expect(play).toHaveBeenCalledWith('d.mp3')
   })
 
+  it('does not flash or play for a predicted alarm', async () => {
+    const ipc = await notify({ default: 'd.mp3' }, { sound: true, kind: 'predicted-low' })
+    expect(ipc.ipcRenderer.sendMessage).not.toHaveBeenCalledWith('trigger-warning-alerts', expect.anything())
+    expect(play).not.toHaveBeenCalled()
+  })
+
   it('plays the custom sound when chosen and available', async () => {
     useAlertStore.setState({ useCustomSound: true })
     await notify({ default: 'd.mp3', custom: 'c.mp3' })

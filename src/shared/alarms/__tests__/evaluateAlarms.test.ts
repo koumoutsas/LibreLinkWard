@@ -97,4 +97,44 @@ describe('evaluateAlarms', () => {
     const strict = { ...config, low: 90 }
     expect(evaluateAlarms({ latest: reading(85), config: strict, now: NOW }).state.active).toBe('low')
   })
+  describe('predictive alarms', () => {
+    const predictive = { ...config, predictive: true }
+    const falling = [reading(100, 5), reading(85)]
+    const rising = [reading(130, 5), reading(150)]
+    const evalHistory = (history: ReturnType<typeof reading>[], cfg = predictive, state?: AlarmEngineState) =>
+      evaluateAlarms({ latest: history[history.length - 1], history, config: cfg, now: NOW }, state)
+
+    it('raises predicted-low when the forecast falls below low within 30 minutes', () => {
+      const { state, events } = evalHistory(falling)
+      expect(state.active).toBe('predicted-low')
+      expect(events).toEqual([{ type: 'raise', kind: 'predicted-low', value: 85 }])
+    })
+
+    it('raises predicted-high when the forecast rises above high', () => {
+      expect(evalHistory(rising).state.active).toBe('predicted-high')
+    })
+
+    it('is off by default and silent for a steady reading', () => {
+      expect(evalHistory(falling, config).state).toEqual({})
+      expect(evalHistory([reading(100, 5), reading(100)]).state).toEqual({})
+    })
+
+    it('needs a reading five minutes back', () => {
+      expect(evalHistory([reading(85)]).state).toEqual({})
+    })
+
+    it('lets the real low take over and escalate', () => {
+      const first = evalHistory(falling).state
+      const r = evaluateAlarms({ latest: reading(65), history: [reading(85, 5), reading(65)], config: predictive, now: NOW }, first)
+      expect(r.state.active).toBe('low')
+      expect(r.events[0].type).toBe('escalate')
+    })
+
+    it('clears once the forecast is clearly back in range', () => {
+      const active = evalHistory(falling).state
+      const r = evalHistory([reading(110, 5), reading(110)], predictive, active)
+      expect(r.state).toEqual({})
+      expect(r.events).toEqual([{ type: 'clear', kind: 'predicted-low' }])
+    })
+  })
 })

@@ -120,6 +120,7 @@ export class AlarmService {
       const { state, events } = evaluateAlarms(
         {
           latest: patient.latest,
+          history: config.predictive ? patient.history : undefined,
           lastUpdated: patient.lastUpdated,
           config,
           now,

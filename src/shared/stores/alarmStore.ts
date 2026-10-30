@@ -9,6 +9,8 @@ export type AlarmConfig = {
   /** Raise a no-data alarm when no reading arrived for this long. */
   signalLossMinutes: number
   sound: boolean
+  /** Also alarm when the AR2 forecast leaves the range within 30 minutes. */
+  predictive: boolean
 }
 
 export type Targets = { targetLow?: number; targetHigh?: number }
@@ -30,6 +32,7 @@ export function defaultAlarmConfig(targets: Targets = {}): AlarmConfig {
     high: targets.targetHigh ?? FALLBACK_DEFAULTS.high,
     signalLossMinutes: 20,
     sound: false,
+    predictive: false,
   }
 }
 

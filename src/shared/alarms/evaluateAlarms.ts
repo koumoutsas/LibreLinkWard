@@ -1,14 +1,17 @@
 import type { GraphPoint } from '../linkup/types'
 import { AlarmConfig, pointTime } from '../stores'
+import { ar2Forecast } from '../forecast'
 
 export type GlucoseLevel = 'urgent-low' | 'low' | 'in-range' | 'high' | 'urgent-high'
 export type Thresholds = Pick<AlarmConfig, 'urgentLow' | 'low' | 'high' | 'urgentHigh'>
-export type AlarmKind = Exclude<GlucoseLevel, 'in-range'> | 'signal-loss'
+export type AlarmKind = Exclude<GlucoseLevel, 'in-range'> | 'signal-loss' | 'predicted-low' | 'predicted-high'
 
 /** mg/dL a reading must move back inside a threshold before the alarm clears. */
 export const HYSTERESIS_MGDL = 5
 /** Minutes between repeat notifications while an alarm stays active and unacknowledged. */
 export const REPEAT_MINUTES = 5
+/** How far ahead the AR2 forecast is checked for predicted alarms. */
+export const PREDICTION_MINUTES = 30
 
 export function glucoseLevel(mgdl: number, t: Thresholds): GlucoseLevel {
   if (mgdl < t.urgentLow) return 'urgent-low'
@@ -24,6 +27,9 @@ const SEVERITY: Record<AlarmKind, number> = {
   'urgent-low': 2,
   'urgent-high': 2,
   'signal-loss': 1,
+  // Below every real alarm, so the real low/high that follows escalates.
+  'predicted-low': 0,
+  'predicted-high': 0,
 }
 
 /** Per-patient engine state. Plain data so it can be kept in a map and tested. */
@@ -47,6 +53,8 @@ export type AlarmEvent = {
 
 export type EvaluateInput = {
   latest?: GraphPoint
+  /** Recent readings, oldest first; only needed for predicted alarms. */
+  history?: GraphPoint[]
   /** Epoch ms of the last successful poll; used when the reading time is unusable. */
   lastUpdated?: number
   config: AlarmConfig
@@ -77,6 +85,29 @@ function withHysteresis(t: Thresholds, active: AlarmKind | undefined): Threshold
   }
 }
 
+/** Whether the AR2 line leaves the low/high thresholds within PREDICTION_MINUTES. */
+function predictedKind(
+  history: GraphPoint[],
+  t: Thresholds,
+  active: AlarmKind | undefined,
+): 'predicted-low' | 'predicted-high' | undefined {
+  const readings = history
+    .map((p) => ({ t: pointTime(p), mgdl: p.ValueInMgPerDl }))
+    .filter((r) => !Number.isNaN(r.t))
+  const steps = ar2Forecast(readings).slice(0, PREDICTION_MINUTES / 5)
+  if (steps.length === 0) return undefined
+  // An active predicted alarm needs the line to move clearly back before it clears.
+  const h = HYSTERESIS_MGDL
+  const low = t.low + (active === 'predicted-low' ? h : 0)
+  const high = t.high - (active === 'predicted-high' ? h : 0)
+  const min = Math.min(...steps.map((s) => s.mgdl))
+  const max = Math.max(...steps.map((s) => s.mgdl))
+  const lowGap = min < low ? low - min : 0
+  const highGap = max > high ? max - high : 0
+  if (lowGap === 0 && highGap === 0) return undefined
+  return lowGap >= highGap ? 'predicted-low' : 'predicted-high'
+}
+
 function currentKind(input: EvaluateInput, prev: AlarmEngineState): AlarmKind | undefined {
   const { latest, lastUpdated, config, now } = input
   const readingTime = latest ? pointTime(latest) : NaN
@@ -85,9 +116,10 @@ function currentKind(input: EvaluateInput, prev: AlarmEngineState): AlarmKind | 
     return 'signal-loss'
   }
   if (!latest) return undefined
-  const prevLevel = prev.active === 'signal-loss' ? undefined : prev.active
+  const prevLevel = prev.active === 'signal-loss' || prev.active?.startsWith('predicted') ? undefined : prev.active
   const level = glucoseLevel(latest.ValueInMgPerDl, withHysteresis(config, prevLevel))
-  return level === 'in-range' ? undefined : level
+  if (level !== 'in-range') return level
+  return config.predictive ? predictedKind(input.history ?? [], config, prev.active) : undefined
 }
 
 /**

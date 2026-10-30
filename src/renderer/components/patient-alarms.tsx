@@ -17,12 +17,14 @@ const FIELDS = [
 type Draft = {
   enabled: boolean;
   sound: boolean;
+  predictive: boolean;
   signalLossMinutes: string;
 } & Record<(typeof FIELDS)[number][0], string>;
 
 const toDraft = (config: AlarmConfig, unit: string): Draft => ({
   enabled: config.enabled,
   sound: config.sound,
+  predictive: config.predictive,
   urgentLow: String(toUnit(config.urgentLow, unit)),
   low: String(toUnit(config.low, unit)),
   high: String(toUnit(config.high, unit)),
@@ -55,6 +57,7 @@ export function PatientAlarms({ patientId }: { patientId: string }) {
     const patch: Partial<AlarmConfig> = {};
     if (draft.enabled !== current.enabled) patch.enabled = draft.enabled;
     if (draft.sound !== current.sound) patch.sound = draft.sound;
+    if (draft.predictive !== current.predictive) patch.predictive = draft.predictive;
     for (const [key, label] of FIELDS) {
       if (draft[key] === current[key]) continue;
       const v = Number(draft[key]);
@@ -81,6 +84,15 @@ export function PatientAlarms({ patientId }: { patientId: string }) {
           <div className="flex justify-between gap-4">
             <p className="text-gray-400">Play sound</p>
             <ToggleSwitch checked={draft.sound} onChange={(sound) => edit({ sound })} />
+          </div>
+          <div className="space-y-1">
+            <div className="flex justify-between gap-4">
+              <p className="text-gray-400">Predictive alarms</p>
+              <ToggleSwitch checked={draft.predictive} onChange={(predictive) => edit({ predictive })} />
+            </div>
+            <p className="text-xs text-gray-500">
+              Silent notification when the AR2 forecast leaves the low/high range within 30 minutes. A rough estimate: do not use it for treatment decisions.
+            </p>
           </div>
           <div className="grid grid-cols-2 gap-4">
             {FIELDS.map(([key, label]) => (
