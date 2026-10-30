@@ -12,6 +12,7 @@ type Props = { patient: PatientState; now?: number; onOpen: (patientId: string) 
 
 export function PatientCard({ patient, now, onOpen }: Props) {
   const unit = useAuthStore((s) => s.resultUnit)
+  const showForecast = useAuthStore((s) => s.showForecast)
   const { config } = useAlarmConfig(patient.patientId)
   const mgdl = patient.latest?.ValueInMgPerDl
   const level = mgdl !== undefined && config ? glucoseLevel(mgdl, config) : undefined
@@ -40,6 +41,7 @@ export function PatientCard({ patient, now, onOpen }: Props) {
           targetHigh={config?.high ?? patient.targetHigh ?? 180}
           windowMs={GRAPH_WINDOW_MS}
           height={200}
+          forecast={showForecast}
         />
       </div>
       <div className="flex justify-between px-4 pb-2 text-xs text-muted-foreground">
