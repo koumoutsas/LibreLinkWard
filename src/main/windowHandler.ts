@@ -13,17 +13,17 @@ export const registerWindowHandlers = () => {
   // 👉 register window handlers
   ipcMain.on('open-new-window', (event, url, width, height) => {
     // Check if the window for this URL already exists
+    if (typeof url !== 'string') return;
     if (windowCache[url]) {
-      // Focus the existing window if it exists
-      if (windowCache[url]) {
-        windowCache[url]?.focus();
-      }
+      windowCache[url]?.focus();
       return;
     }
+    const clamp = (n: unknown, fallback: number) =>
+      typeof n === 'number' && Number.isFinite(n) ? Math.min(Math.max(n, 200), 4000) : fallback;
 
     const newWindow = new BrowserWindow({
-      width,
-      height,
+      width: clamp(width, 800),
+      height: clamp(height, 600),
       webPreferences: {
         webSecurity: false,
         preload: app.isPackaged
@@ -32,6 +32,7 @@ export const registerWindowHandlers = () => {
       },
     });
 
+    newWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     newWindow.loadURL(resolveHtmlPath('index.html'));
     windowCache[url] = newWindow;
 

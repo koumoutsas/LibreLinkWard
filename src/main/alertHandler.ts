@@ -37,10 +37,15 @@ const getAudioFilePath = () => {
   };
 };
 
+const MAX_SOUND_BYTES = 5 * 1024 * 1024;
+
 const uploadCustomAlertSoundFile = (fileData: Array<number>) => {
   const appDataDir = app.getPath('userData');
   const targetFilePath = path.join(appDataDir, 'custom-alert.mp3');
 
+  if (!Array.isArray(fileData) || fileData.length > MAX_SOUND_BYTES) {
+    throw new Error('Invalid custom MP3 file.');
+  }
   try {
     const fileBuffer = Buffer.from(fileData);
     fs.writeFileSync(targetFilePath, fileBuffer);
@@ -58,6 +63,7 @@ export const registerAlertHandler = () => {
 
   ipcMain.on("trigger-warning-alerts", (event, alertOptions) => {
     const mainWindow = getMainWindow();
+    if (!alertOptions || typeof alertOptions !== 'object') return;
     if (mainWindow && alertOptions.bringToFrontEnabled) {
       mainWindow.setAlwaysOnTop(true);
       mainWindow.show();

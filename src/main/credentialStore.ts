@@ -72,7 +72,8 @@ export class CredentialStore {
       return list
         .filter(valid)
         .map((a) => ({ ...a, id: a.id || legacyId((a as Credentials).username) }) as StoredAccount)
-    } catch {
+    } catch (err) {
+      console.error('Could not read stored credentials:', err)
       return []
     }
   }

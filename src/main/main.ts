@@ -109,7 +109,7 @@ const createWindow = async () => {
 
   // Open urls in the user's browser
   mainWindow.webContents.setWindowOpenHandler((edata) => {
-    shell.openExternal(edata.url)
+    if (/^https?:\/\//i.test(edata.url)) shell.openExternal(edata.url)
     return { action: 'deny' }
   })
 
@@ -190,7 +190,9 @@ ipcMain.handle('ipc-open-file', async (event, ...args) => {
     ? app.getAppPath()
     : path.join(__dirname, '..')
 
-  const filePath = path.join(appPath, '..', 'assets', 'resources', ...args)
+  const root = path.resolve(appPath, '..', 'assets', 'resources')
+  const filePath = path.resolve(root, ...args.map(String))
+  if (!filePath.startsWith(root + path.sep)) throw new Error('Path outside resources')
   shell.openPath(filePath)
 })
 
