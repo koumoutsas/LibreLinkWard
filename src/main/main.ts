@@ -125,6 +125,8 @@ const getWindowOptions = (): Electron.BrowserWindowConstructorOptions => ({
   minWidth: 200,
   minHeight: 45,
   frame: true,
+  // Linux shows the window icon in the task manager; it is the circular, transparent logo used in the macOS menu bar.
+  ...(process.platform === 'linux' && { icon: app.isPackaged ? path.join(process.resourcesPath, 'assets/logo.png') : path.join(__dirname, '../../assets/logo.png') }),
   webPreferences: {
     webSecurity: false,
     preload: app.isPackaged

@@ -272,7 +272,7 @@
         "AppImage",
         "deb"
       ],
-      "icon": "assets/icon.icns",
+      "icon": "assets/logo.png",
       "synopsis": "Fetches your blood sugar from LibreLinkUp",
       "maintainer": "Yannis Ioannidis <jfioannidis@gmail.com>",
       "vendor": "Yannis Ioannidis",

@@ -268,7 +268,7 @@ class TrayManager {
       : this.createIconFromFile();
   }
 
-  /** Draws the readings as text in a hidden window. macOS: white on one pill per value, coloured by glucose level. Linux: white on a pill coloured by glucose level, readable on any panel theme. */
+  /** Draws the readings as text in a hidden window. macOS: black on one pill per value, coloured by glucose level. Linux: black on a pill coloured by glucose level, readable on any panel theme. */
   private async renderTextImage(text: string): Promise<Electron.NativeImage> {
     if (process.platform === 'linux') return this.renderSquareImage(text);
     const win = new BrowserWindow({
@@ -286,7 +286,7 @@ class TrayManager {
         .join('');
       const html = `<body style="margin:0;background:transparent;overflow:hidden"><div id="t" style="display:inline-flex;gap:${3 * TRAY_TEXT_SCALE}px;`
         + `white-space:nowrap;font:600 ${14 * TRAY_TEXT_SCALE}px/${TRAY_TEXT_HEIGHT_PX * TRAY_TEXT_SCALE}px -apple-system,BlinkMacSystemFont,sans-serif;`
-        + `font-variant-numeric:tabular-nums;color:#fff">${pills}</div></body>`;
+        + `font-variant-numeric:tabular-nums;color:#000">${pills}</div></body>`;
       await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
       const width = Math.ceil(await win.webContents.executeJavaScript('document.getElementById("t").getBoundingClientRect().width'));
       const height = TRAY_TEXT_HEIGHT_PX * TRAY_TEXT_SCALE;
@@ -300,7 +300,7 @@ class TrayManager {
   }
 
   /**
-   * Linux: KDE shrinks any wide icon to fit a square box, so draw a square. White bold text on a pill coloured by
+   * Linux: KDE shrinks any wide icon to fit a square box, so draw a square. Black bold text on a pill coloured by
    * glucose level (readable on any panel theme); lines are stacked and the font shrinks only as far as needed to fit.
    * One patient: the value over its arrow; several: lowest over highest.
    */
@@ -322,7 +322,7 @@ class TrayManager {
       const lineHeight = size / lines.length;
       const html = `<body style="margin:0;background:transparent;overflow:hidden"><div id="b" style="width:${size}px;height:${size}px;`
         + `box-sizing:border-box;background:${color};border-radius:${4 * TRAY_TEXT_SCALE}px;display:flex;flex-direction:column;`
-        + `align-items:center;justify-content:center;color:#fff;font:700 ${lineHeight}px/${lineHeight}px sans-serif;`
+        + `align-items:center;justify-content:center;color:#000;font:700 ${lineHeight}px/${lineHeight}px sans-serif;`
         + `font-variant-numeric:tabular-nums;white-space:nowrap">${lines.map((l) => `<div class="l">${this.escapeHtml(l)}</div>`).join('')}</div></body>`;
       await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
       await win.webContents.executeJavaScript(
