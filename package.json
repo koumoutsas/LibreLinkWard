@@ -27,7 +27,9 @@
     "test:e2e": "playwright test",
     "test:e2e:local": "scripts/e2e-local.sh",
     "typecheck": "tsc --noEmit --skipLibCheck",
-    "test:mutation": "stryker run"
+    "test:mutation": "stryker run",
+    "deps:outdated": "npm outdated",
+    "deps:deprecated": "node scripts/check-deprecated.js"
   },
   "browserslist": [],
   "prettier": {

@@ -1,0 +1,51 @@
+name: Dependency health
+
+on:
+  schedule:
+    - cron: '0 7 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --prefer-offline --legacy-peer-deps --ignore-scripts
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Find deprecated packages
+        id: deprecated
+        continue-on-error: true
+        run: node scripts/check-deprecated.js | tee deprecated.txt
+
+      - name: Report outdated packages
+        run: |
+          {
+            echo '### Outdated (non-major)'
+            echo '```'
+            npx --yes npm-check-updates --target minor || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Open or update deprecation issue
+        if: steps.deprecated.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          title='Deprecated dependencies'
+          body="$(printf 'These installed packages are marked deprecated on npm:\n\n%s\n' "$(cat deprecated.txt)")"
+          number="$(gh issue list --search "$title in:title" --state open --json number --jq '.[0].number')"
+          if [ -n "$number" ]; then
+            gh issue edit "$number" --body "$body"
+          else
+            gh issue create --title "$title" --body "$body"
+          fi
