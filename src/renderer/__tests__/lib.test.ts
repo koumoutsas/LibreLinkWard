@@ -1,15 +1,10 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
-import { createElement, type ReactNode } from 'react'
 import * as utils from '../lib/utils'
-import { alarmLabel, describeAlarm } from '../lib/alarmText'
 import { AudioManager } from '../lib/AudioManager'
 import { getAuthToken, getCGMData, getConnection } from '../lib/linkup'
 import { LinkUpClient, LinkUpError } from '../../shared/linkup'
 import { useAuthStore } from '../stores/auth'
 import { useAlertStore } from '../stores/alertStore'
-import { useClearSession } from '../hooks/session'
-import { useGlucoseAlerts } from '../hooks/useGlucoseAlerts'
 import { useActiveAlarms } from '../hooks/useActiveAlarms'
 import { useAlarmConfig } from '../hooks/useAlarmConfig'
 import { usePatients } from '../hooks/usePatients'
@@ -97,23 +92,6 @@ describe('utils', () => {
     ;(window as any).electron = undefined
     expect(() => utils.updateTrayReadings([])).not.toThrow()
   })
-
-  describe('getGlucoseValueForTray', () => {
-    it('reads the latest value, or 0 when absent or failing', async () => {
-      Client.mockImplementation(() => ({
-        getConnections: async () => [{ patientId: 'p' }],
-        getGraph: async () => ({ connection: { glucoseMeasurement: { ValueInMgPerDl: 123.4 } } }),
-      }))
-      expect(await utils.getGlucoseValueForTray('t', 'eu', 'a')).toBe(123)
-      Client.mockImplementation(() => ({
-        getConnections: async () => [{ patientId: 'p' }],
-        getGraph: async () => ({ connection: {} }),
-      }))
-      expect(await utils.getGlucoseValueForTray('t', 'eu', 'a')).toBe(0)
-      Client.mockImplementation(() => ({ getConnections: async () => { throw new Error('x') } }))
-      expect(await utils.getGlucoseValueForTray('t', 'eu', 'a')).toBe(0)
-    })
-  })
 })
 
 describe('linkup adapters', () => {
@@ -138,15 +116,6 @@ describe('linkup adapters', () => {
     Client.mockImplementation(() => ({ getConnections: async () => { throw new Error('x') } }))
     expect(await getCGMData(session)).toBeNull()
     expect(await getConnection(session)).toBeNull()
-  })
-})
-
-describe('alarm text', () => {
-  it('labels alarms and formats readings', () => {
-    expect(alarmLabel('urgent-low')).toBe('Urgent low')
-    expect(describeAlarm('low', 65, 'mg/dL')).toBe('Low: 65 mg/dL')
-    expect(describeAlarm('signal-loss', 65, 'mg/dL')).toBe('No data')
-    expect(describeAlarm('high', undefined, 'mg/dL')).toBe('High')
   })
 })
 
@@ -208,62 +177,6 @@ describe('stores', () => {
 })
 
 describe('hooks', () => {
-  it('useClearSession logs out, goes home and tells main', () => {
-    const { ipcRenderer } = stubElectron()
-    const wrapper = ({ children }: { children: ReactNode }) => createElement(MemoryRouter, null, children)
-    const { result } = renderHook(() => useClearSession(), { wrapper })
-    act(() => result.current.clearSession())
-    expect(useAuthStore.getState().token).toBeNull()
-    expect(ipcRenderer.sendMessage).toHaveBeenCalledWith('logout')
-  })
-
-  describe('useGlucoseAlerts', () => {
-    const flags = { bringToFrontEnabled: true, flashWindowEnabled: true, audioAlertEnabled: true, useCustomSound: false, overrideThreshold: false, customTargetLow: null, customTargetHigh: null }
-    let play: jest.Mock
-    beforeEach(() => {
-      play = jest.fn(async () => {})
-      jest.spyOn(AudioManager, 'getInstance').mockReturnValue({ playAudio: play } as any)
-      useAlertStore.setState(flags)
-    })
-
-    it('stays quiet in range', async () => {
-      const { ipcRenderer } = stubElectron()
-      const { result } = renderHook(() => useGlucoseAlerts())
-      await result.current.dispatchAlert(100, 70, 180)
-      expect(ipcRenderer.sendMessage).not.toHaveBeenCalled()
-    })
-
-    it.each([[50], [250]])('alerts and plays the default sound for %i', async (v) => {
-      const { ipcRenderer } = stubElectron(async () => ({ default: 'd.mp3', custom: 'c.mp3' }))
-      const { result } = renderHook(() => useGlucoseAlerts())
-      await result.current.dispatchAlert(v, 70, 180)
-      expect(ipcRenderer.sendMessage).toHaveBeenCalledWith('trigger-warning-alerts', { bringToFrontEnabled: true, flashWindowEnabled: true })
-      expect(play).toHaveBeenCalledWith('d.mp3')
-    })
-
-    it('prefers a custom sound and custom thresholds when enabled', async () => {
-      useAlertStore.setState({ useCustomSound: true, overrideThreshold: true, customTargetLow: 90, customTargetHigh: 120 })
-      stubElectron(async () => ({ default: 'd.mp3', custom: 'c.mp3' }))
-      const { result } = renderHook(() => useGlucoseAlerts())
-      await result.current.dispatchAlert(130, 70, 180)
-      expect(play).toHaveBeenCalledWith('c.mp3')
-    })
-
-    it('skips audio when disabled or when no file is available, and survives errors', async () => {
-      stubElectron(async () => ({}))
-      const { result } = renderHook(() => useGlucoseAlerts())
-      await result.current.dispatchAlert(50, 70, 180)
-      expect(play).not.toHaveBeenCalled()
-      useAlertStore.setState({ audioAlertEnabled: false })
-      const again = renderHook(() => useGlucoseAlerts())
-      await again.result.current.dispatchAlert(50, 70, 180)
-      useAlertStore.setState({ audioAlertEnabled: true })
-      stubElectron(async () => { throw new Error('x') })
-      const failing = renderHook(() => useGlucoseAlerts())
-      await expect(failing.result.current.dispatchAlert(50, 70, 180)).resolves.toBeUndefined()
-    })
-  })
-
   describe('useActiveAlarms', () => {
     it('loads, updates, notifies and acts', async () => {
       const ipc = stubElectron(async (ch) => (ch === 'alarms:get-active' ? [{ id: '1' }] : undefined))

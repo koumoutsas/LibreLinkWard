@@ -2,7 +2,6 @@ import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { useAuthStore } from '../stores/auth'
 import CryptoJS from 'crypto-js';
-import { getCGMData } from '@/lib/linkup';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -79,26 +78,6 @@ export function getUserUnit(): string {
 
 export function hash256(input: string): string {
   return CryptoJS.SHA256(input).toString(CryptoJS.enc.Hex);
-}
-
-export async function getGlucoseValueForTray(token: string, country: string, accountId: string): Promise<number> {
-  try {
-    const data = (await getCGMData({
-      token,
-      country,
-      accountId,
-    })) as { glucoseMeasurement?: { ValueInMgPerDl?: number } } | null;
-
-     if (data?.glucoseMeasurement?.ValueInMgPerDl) {
-       const value = getUserValue(data.glucoseMeasurement.ValueInMgPerDl);
-       return Math.round(value);
-     }
-
-    return 0;
-  } catch (error) {
-    console.error('Error getting glucose data for tray:', error);
-    return 0;
-  }
 }
 
 export type TrayReading = { name: string; mgdl: number; targetLow?: number; targetHigh?: number; trend?: number; stale?: boolean }
