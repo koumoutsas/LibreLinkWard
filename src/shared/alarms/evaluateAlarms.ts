@@ -1,5 +1,6 @@
 import type { GraphPoint } from '../linkup/types'
 import { AlarmConfig, pointTime } from '../stores'
+import { isStale } from './staleness'
 import { ar2Forecast } from '../forecast'
 
 export type GlucoseLevel = 'urgent-low' | 'low' | 'in-range' | 'high' | 'urgent-high'
@@ -110,11 +111,7 @@ function predictedKind(
 
 function currentKind(input: EvaluateInput, prev: AlarmEngineState): AlarmKind | undefined {
   const { latest, lastUpdated, config, now } = input
-  const readingTime = latest ? pointTime(latest) : NaN
-  const lastSeen = Number.isNaN(readingTime) ? lastUpdated : readingTime
-  if (lastSeen !== undefined && now - lastSeen > config.signalLossMinutes * 60_000) {
-    return 'signal-loss'
-  }
+  if (isStale(latest, lastUpdated, config.signalLossMinutes, now)) return 'signal-loss'
   if (!latest) return undefined
   const prevLevel = prev.active === 'signal-loss' || prev.active?.startsWith('predicted') ? undefined : prev.active
   const level = glucoseLevel(latest.ValueInMgPerDl, withHysteresis(config, prevLevel))

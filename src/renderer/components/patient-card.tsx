@@ -4,20 +4,25 @@ import { PatientGraph } from '@/components/patient-graph'
 import { useAlarmConfig } from '@/hooks/useAlarmConfig'
 import { useAuthStore } from '@/stores/auth'
 import { cn } from '@/lib/utils'
+import { DEFAULT_SIGNAL_LOSS_MINUTES, isStale, lastSeenAt } from '../../shared/alarms/staleness'
+import { useNow } from '@/hooks/useNow'
 import { LEVEL_CLASS, formatGlucose, glucoseLevel, minutesSince } from '@/lib/glucose'
 
 const GRAPH_WINDOW_MS = 6 * 60 * 60 * 1000
 
 type Props = { patient: PatientState; now?: number; onOpen: (patientId: string) => void }
 
-export function PatientCard({ patient, now, onOpen }: Props) {
+export function PatientCard({ patient, now: nowProp, onOpen }: Props) {
+  const ticking = useNow()
+  const now = nowProp ?? ticking
   const unit = useAuthStore((s) => s.resultUnit)
   const showForecast = useAuthStore((s) => s.showForecast)
   const showForecastCone = useAuthStore((s) => s.showForecastCone)
   const { config } = useAlarmConfig(patient.patientId)
   const mgdl = patient.latest?.ValueInMgPerDl
-  const level = mgdl !== undefined && config ? glucoseLevel(mgdl, config) : undefined
-  const age = minutesSince(patient.lastUpdated, now)
+  const stale = isStale(patient.latest, patient.lastUpdated, config?.signalLossMinutes ?? DEFAULT_SIGNAL_LOSS_MINUTES, now)
+  const level = mgdl !== undefined && config && !stale ? glucoseLevel(mgdl, config) : undefined
+  const age = minutesSince(lastSeenAt(patient.latest, patient.lastUpdated), now)
 
   return (
     <button
@@ -29,9 +34,9 @@ export function PatientCard({ patient, now, onOpen }: Props) {
       <div className={cn('flex items-center justify-between px-4 py-3 text-white', level ? LEVEL_CLASS[level] : 'bg-gray-500')}>
         <span className="font-semibold truncate">{patient.name}</span>
         <span className="flex items-center gap-2 text-2xl font-semibold">
-          {formatGlucose(mgdl, unit)}
+          {stale ? '--' : formatGlucose(mgdl, unit)}
           <span className="text-xs font-normal">{unit}</span>
-          {patient.latest && <TrendArrow className="h-5 w-5" trend={patient.latest.TrendArrow ?? 3} />}
+          {patient.latest && !stale && <TrendArrow className="h-5 w-5" trend={patient.latest.TrendArrow ?? 3} />}
         </span>
       </div>
       <div className="px-2 pt-1 text-foreground/70">

@@ -9,6 +9,8 @@ import { TrendArrow } from '@/components/ui/trend-arrow';
 import { usePatients } from '@/hooks/usePatients';
 import { useAlarmConfig } from '@/hooks/useAlarmConfig';
 import { useAuthStore } from '@/stores/auth';
+import { useNow } from '@/hooks/useNow';
+import { DEFAULT_SIGNAL_LOSS_MINUTES, isStale } from '../../shared/alarms/staleness';
 import { formatGlucose } from '@/lib/glucose';
 import { openNewWindow, setRedirectTo } from '@/lib/utils';
 
@@ -24,7 +26,10 @@ export default function PatientPage() {
   const { patients } = usePatients();
   const { config } = useAlarmConfig(patientId);
   const [hours, setHours] = useState(6);
+  const now = useNow();
   const patient = patients.find((p) => p.patientId === patientId);
+
+  const stale = !!patient && isStale(patient.latest, patient.lastUpdated, config?.signalLossMinutes ?? DEFAULT_SIGNAL_LOSS_MINUTES, now);
 
   const openAlarms = () => {
     const path = `/settings/patients/${patientId}`;
@@ -46,9 +51,9 @@ export default function PatientPage() {
           <div className="flex items-center justify-between mt-4">
             <h1 className="text-2xl font-semibold">{patient.name}</h1>
             <div className="flex items-center gap-2 text-3xl font-semibold">
-              {formatGlucose(patient.latest?.ValueInMgPerDl, unit)}
+              {stale ? '--' : formatGlucose(patient.latest?.ValueInMgPerDl, unit)}
               <span className="text-sm font-normal">{unit}</span>
-              {patient.latest && <TrendArrow className="h-6 w-6" trend={patient.latest.TrendArrow ?? 3} />}
+              {patient.latest && !stale && <TrendArrow className="h-6 w-6" trend={patient.latest.TrendArrow ?? 3} />}
             </div>
           </div>
           <div className="flex items-center justify-between my-3">

@@ -193,10 +193,20 @@ describe('PatientCard', () => {
   })
 
   it('flags connection problems and uses the alarm thresholds', async () => {
-    const latest = { Timestamp: ts, FactoryTimestamp: ts, ValueInMgPerDl: 100 }
-    show({ ...base, status: 'error', lastError: 'boom', latest, history: [latest], lastUpdated: Date.now() - 5 * 60000 }, { urgentLow: 54, low: 70, high: 180, urgentHigh: 250 })
+    const t = new Date(Date.now() - 5 * 60000).toISOString()
+    const latest = { Timestamp: t, FactoryTimestamp: t, ValueInMgPerDl: 100 }
+    show({ ...base, status: 'error', lastError: 'boom', latest, history: [latest], lastUpdated: Date.now() }, { urgentLow: 54, low: 70, high: 180, urgentHigh: 250, signalLossMinutes: 20 })
     expect(screen.getByText('Connection problem')).toHaveAttribute('title', 'boom')
     expect(screen.getByText('5 min ago')).toBeInTheDocument()
+  })
+
+  it('shows -- instead of the value when the reading is older than the signal-loss timeout', () => {
+    const t = new Date(Date.now() - 90 * 60000).toISOString()
+    const latest = { Timestamp: t, FactoryTimestamp: t, ValueInMgPerDl: 100 }
+    show({ ...base, latest, history: [latest], lastUpdated: Date.now() }, { urgentLow: 54, low: 70, high: 180, urgentHigh: 250, signalLossMinutes: 20 })
+    expect(screen.getByText('--')).toBeInTheDocument()
+    expect(screen.queryByText('100')).not.toBeInTheDocument()
+    expect(screen.getByText('90 min ago')).toBeInTheDocument()
   })
 })
 
