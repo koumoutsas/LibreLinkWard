@@ -82,8 +82,8 @@ export class PollingService {
   }
 
   /** Starts polling every stored login, if any. */
-  startIfConfigured(): boolean {
-    const stored = this.deps.credentials.loadAll()
+  async startIfConfigured(): Promise<boolean> {
+    const stored = await this.deps.credentials.loadAll()
     for (const account of stored) this.begin(account)
     return stored.length > 0
   }
@@ -106,7 +106,7 @@ export class PollingService {
     }
     const account: StoredAccount = { ...credentials, country, id: (this.deps.newId ?? randomUUID)() }
     try {
-      this.deps.credentials.saveAll([...this.accounts.values(), account])
+      await this.deps.credentials.saveAll([...this.accounts.values(), account])
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) }
     }
@@ -131,7 +131,7 @@ export class PollingService {
     }
     try {
       await new NightscoutClient(account).testConnection()
-      this.deps.credentials.saveAll([...this.accounts.values(), account])
+      await this.deps.credentials.saveAll([...this.accounts.values(), account])
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) }
     }
@@ -160,7 +160,7 @@ export class PollingService {
     }
     try {
       await new NightscoutClient(account).testConnection()
-      this.deps.credentials.saveAll([...this.accounts.values()].map((a) => (a.id === id ? account : a)))
+      await this.deps.credentials.saveAll([...this.accounts.values()].map((a) => (a.id === id ? account : a)))
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) }
     }
@@ -175,14 +175,14 @@ export class PollingService {
   }
 
   /** Removes one login and all of its patients. */
-  removeAccount(id: string): void {
+  async removeAccount(id: string): Promise<void> {
     if (!this.accounts.has(id)) return
     this.halt(id)
     this.accounts.delete(id)
     this.accountStatus.delete(id)
-    this.deps.credentials.saveAll([...this.accounts.values()])
     this.deps.patients.getState().removeAccount(id)
     this.notify()
+    await this.deps.credentials.saveAll([...this.accounts.values()])
   }
 
   signOut(): void {

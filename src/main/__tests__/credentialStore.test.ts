@@ -5,9 +5,9 @@ import path from 'path'
 import { CredentialStore, SafeStorageLike } from '../credentialStore'
 
 const fakeSafe = (available = true): SafeStorageLike => ({
-  isEncryptionAvailable: () => available,
-  encryptString: (s) => Buffer.from(s, 'utf8').reverse(),
-  decryptString: (b) => Buffer.from(b).reverse().toString('utf8'),
+  isAvailable: async () => available,
+  encrypt: async (s) => Buffer.from(s, 'utf8').reverse(),
+  decrypt: async (b) => Buffer.from(b).reverse().toString('utf8'),
 })
 const creds = { country: 'eu', username: 'nurse@example.com', password: 'secret-pw' }
 
@@ -20,46 +20,46 @@ describe('CredentialStore', () => {
   })
   afterEach(() => fs.rmSync(dir, { recursive: true, force: true }))
 
-  it('round-trips several logins and never writes a password in plaintext', () => {
+  it('round-trips several logins and never writes a password in plaintext', async () => {
     const store = new CredentialStore(file, fakeSafe())
     const second = { country: 'us', username: 'Pat@Example.com', password: 'other-pw', id: 'uuid-2' }
-    store.saveAll([{ ...creds, id: 'uuid-1' }, second])
+    await store.saveAll([{ ...creds, id: 'uuid-1' }, second])
     const raw = fs.readFileSync(file).toString()
     expect(raw).not.toContain('secret-pw')
     expect(raw).not.toContain('other-pw')
-    expect(store.loadAll()).toEqual([{ ...creds, id: 'uuid-1' }, second])
+    expect(await store.loadAll()).toEqual([{ ...creds, id: 'uuid-1' }, second])
   })
 
-  it('reads the older single-login file format', () => {
+  it('reads the older single-login file format', async () => {
     fs.mkdirSync(path.dirname(file), { recursive: true })
-    fs.writeFileSync(file, fakeSafe().encryptString(JSON.stringify(creds)))
-    expect(new CredentialStore(file, fakeSafe()).loadAll()).toEqual([{ ...creds, id: 'nurse@example.com' }])
+    fs.writeFileSync(file, await fakeSafe().encrypt(JSON.stringify(creds)))
+    expect(await new CredentialStore(file, fakeSafe()).loadAll()).toEqual([{ ...creds, id: 'nurse@example.com' }])
   })
 
-  it('refuses to save when encryption is unavailable', () => {
+  it('refuses to save when encryption is unavailable', async () => {
     const store = new CredentialStore(file, fakeSafe(false))
-    expect(() => store.saveAll([{ ...creds, id: 'x' }])).toThrow(/not available/)
+    await expect(store.saveAll([{ ...creds, id: 'x' }])).rejects.toThrow(/not available/)
     expect(fs.existsSync(file)).toBe(false)
   })
 
-  it('loadAll returns [] when missing, corrupt, or encryption unavailable', () => {
-    expect(new CredentialStore(file, fakeSafe()).loadAll()).toEqual([])
-    new CredentialStore(file, fakeSafe()).saveAll([{ ...creds, id: 'x' }])
-    expect(new CredentialStore(file, fakeSafe(false)).loadAll()).toEqual([])
+  it('loadAll returns [] when missing, corrupt, or encryption unavailable', async () => {
+    expect(await new CredentialStore(file, fakeSafe()).loadAll()).toEqual([])
+    await new CredentialStore(file, fakeSafe()).saveAll([{ ...creds, id: 'x' }])
+    expect(await new CredentialStore(file, fakeSafe(false)).loadAll()).toEqual([])
     fs.writeFileSync(file, 'garbage')
-    expect(new CredentialStore(file, fakeSafe()).loadAll()).toEqual([])
+    expect(await new CredentialStore(file, fakeSafe()).loadAll()).toEqual([])
   })
 
-  it('drops incomplete entries', () => {
+  it('drops incomplete entries', async () => {
     fs.mkdirSync(path.dirname(file), { recursive: true })
-    fs.writeFileSync(file, fakeSafe().encryptString(JSON.stringify([creds, { username: 'x' }])))
-    expect(new CredentialStore(file, fakeSafe()).loadAll()).toHaveLength(1)
+    fs.writeFileSync(file, await fakeSafe().encrypt(JSON.stringify([creds, { username: 'x' }])))
+    expect(await new CredentialStore(file, fakeSafe()).loadAll()).toHaveLength(1)
   })
 
-  it('clear removes the file', () => {
+  it('clear removes the file', async () => {
     const store = new CredentialStore(file, fakeSafe())
-    store.saveAll([{ ...creds, id: 'x' }])
+    await store.saveAll([{ ...creds, id: 'x' }])
     store.clear()
-    expect(store.loadAll()).toEqual([])
+    expect(await store.loadAll()).toEqual([])
   })
 })

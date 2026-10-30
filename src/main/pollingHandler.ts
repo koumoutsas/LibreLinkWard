@@ -8,7 +8,7 @@ import {
   resolveAlarmConfig,
 } from '../shared/stores'
 import { AlarmService } from './alarmService'
-import { CredentialStore } from './credentialStore'
+import { CredentialStore, toSafeStorage } from './credentialStore'
 import { readJson, writeJson } from './persistence'
 import { PollingService } from './pollingService'
 import { NightscoutClient } from './nightscout/client'
@@ -30,13 +30,13 @@ const snapshot = () => ({
   patients: Object.values(patientStore.getState().patients),
 })
 
-export const registerPollingHandler = () => {
+export const registerPollingHandler = async () => {
   const dir = app.getPath('userData')
   const alarmFile = path.join(dir, 'alarms.json')
   const alarmStore = createAlarmStore({ overrides: readJson(alarmFile, {}) })
 
   service = new PollingService({
-    credentials: new CredentialStore(path.join(dir, 'credentials.bin'), safeStorage),
+    credentials: new CredentialStore(path.join(dir, 'credentials.bin'), toSafeStorage(safeStorage)),
     patients: patientStore,
     onStatus: () => broadcast('linkup:state', snapshot()),
   })
@@ -48,8 +48,8 @@ export const registerPollingHandler = () => {
     onNotify: (n) => broadcast('alarms:notify', n),
   })
 
-  const nsStore = new NightscoutConfigStore(path.join(dir, 'nightscout.bin'), safeStorage)
-  let nsConfigs = nsStore.load()
+  const nsStore = new NightscoutConfigStore(path.join(dir, 'nightscout.bin'), toSafeStorage(safeStorage))
+  let nsConfigs = await nsStore.load()
   uploader = new NightscoutUploader({
     patients: patientStore,
     onStatus: () => broadcast('nightscout:changed', null),
@@ -115,7 +115,7 @@ export const registerPollingHandler = () => {
   ipcMain.handle('nightscout:reveal-secret', (_e, patientId: string) => nsConfigs[patientId]?.apiSecret ?? '')
   ipcMain.handle(
     'nightscout:set',
-    (_e, patientId: string, patch: Partial<NightscoutConfig>) => {
+    async (_e, patientId: string, patch: Partial<NightscoutConfig>) => {
       const prev = nsConfigs[patientId]
       const next: NightscoutConfig = {
         ...{ enabled: false, url: '', apiSecret: '', deviceName: DEFAULT_DEVICE_NAME },
@@ -125,7 +125,7 @@ export const registerPollingHandler = () => {
       // An empty secret in the patch means "unchanged".
       if (!patch.apiSecret) next.apiSecret = prev?.apiSecret ?? ''
       nsConfigs = { ...nsConfigs, [patientId]: next }
-      nsStore.save(nsConfigs)
+      await nsStore.save(nsConfigs)
       uploader!.setConfigs(nsConfigs)
     },
   )
@@ -145,7 +145,7 @@ export const registerPollingHandler = () => {
 
   alarmService.start()
   uploader.start()
-  service.startIfConfigured()
+  await service.startIfConfigured()
 }
 
 export const destroyPollingHandler = () => {

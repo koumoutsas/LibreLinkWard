@@ -142,13 +142,13 @@ app.on('window-all-closed', () => {
 
 app
   .whenReady()
-  .then(() => {
+  .then(async () => {
     // A packaged app gets its Dock icon from the bundle; an unpackaged one would show Electron's.
     if (process.platform === 'darwin' && !app.isPackaged) {
       app.dock?.setIcon(path.join(__dirname, '../../assets/icon.png'))
     }
     // safeStorage is only usable once the app is ready
-    registerPollingHandler()
+    await registerPollingHandler()
     createWindow()
     app.on('activate', () => {
       // On macOS it's common to re-create a window in the app when the

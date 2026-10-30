@@ -10,7 +10,7 @@ const stored1 = { ...creds, id: 'u' }
 
 const setup = (client: any, stored: Array<typeof stored1> = [], createClient: (c: any) => any = () => client) => {
   const credentials = {
-    loadAll: jest.fn(() => stored),
+    loadAll: jest.fn(async () => stored),
     saveAll: jest.fn(),
     clear: jest.fn(),
   }
@@ -40,16 +40,16 @@ const okClient = (): any => ({
 })
 
 describe('PollingService', () => {
-  it('does nothing without stored credentials', () => {
+  it('does nothing without stored credentials', async () => {
     const { service } = setup(okClient())
-    expect(service.startIfConfigured()).toBe(false)
+    expect(await service.startIfConfigured()).toBe(false)
     expect(service.getStatus()).toBe('signed-out')
   })
 
   it('starts with stored credentials and fills the patient store for every patient', async () => {
     const client = okClient()
     const { service, patients } = setup(client, [stored1])
-    expect(service.startIfConfigured()).toBe(true)
+    expect(await service.startIfConfigured()).toBe(true)
     await flush()
     expect(Object.keys(patients.getState().patients).sort()).toEqual(['u~p1', 'u~p2'])
     expect(patients.getState().patients['u~p1'].latest?.ValueInMgPerDl).toBe(100)
@@ -79,7 +79,7 @@ describe('PollingService', () => {
   it('auth errors while polling halt the poller and flag auth-error', async () => {
     const client = { ...okClient(), getConnections: jest.fn().mockRejectedValue(new LinkUpError('no', 'auth', 401)) }
     const { service, onStatus } = setup(client, [stored1])
-    service.startIfConfigured()
+    await service.startIfConfigured()
     await flush()
     expect(service.getStatus()).toBe('auth-error')
     expect(onStatus).toHaveBeenLastCalledWith('auth-error')
@@ -93,7 +93,7 @@ describe('PollingService', () => {
       return { connection: { patientId: id }, graphData: [point], glucoseMeasurement: point }
     })
     const { service, patients } = setup(client, [stored1])
-    service.startIfConfigured()
+    await service.startIfConfigured()
     await flush()
     expect(patients.getState().patients['u~p1'].status).toBe('ok')
     expect(patients.getState().patients['u~p2']).toMatchObject({ status: 'error', lastError: 'down' })
@@ -102,7 +102,7 @@ describe('PollingService', () => {
 
   it('signOut clears credentials and patients', async () => {
     const { service, credentials, patients } = setup(okClient(), [stored1])
-    service.startIfConfigured()
+    await service.startIfConfigured()
     await flush()
     service.signOut()
     expect(credentials.clear).toHaveBeenCalled()
@@ -159,7 +159,7 @@ describe('PollingService', () => {
       await add(service, 'bob')
       await flush()
       const first = service.getAccounts()[0].id
-      service.removeAccount(first)
+      await service.removeAccount(first)
       expect(service.getAccounts()).toHaveLength(2)
       expect(Object.keys(patients.getState().patients)).toHaveLength(2)
       expect(Object.keys(patients.getState().patients).some((k) => k.startsWith(first))).toBe(false)
@@ -174,7 +174,7 @@ describe('PollingService', () => {
     it('removing the last view signs out', async () => {
       const { service } = setup(null, [], byUser)
       await add(service, 'ann')
-      service.removeAccount(service.getAccounts()[0].id)
+      await service.removeAccount(service.getAccounts()[0].id)
       expect(service.getStatus()).toBe('signed-out')
     })
 

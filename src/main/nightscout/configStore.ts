@@ -23,21 +23,21 @@ export class NightscoutConfigStore {
     private readonly safe: SafeStorageLike,
   ) {}
 
-  load(): NightscoutConfigs {
+  async load(): Promise<NightscoutConfigs> {
     try {
-      if (!fs.existsSync(this.file) || !this.safe.isEncryptionAvailable()) return {}
-      return JSON.parse(this.safe.decryptString(fs.readFileSync(this.file)))
+      if (!fs.existsSync(this.file) || !(await this.safe.isAvailable())) return {}
+      return JSON.parse(await this.safe.decrypt(fs.readFileSync(this.file)))
     } catch {
       return {}
     }
   }
 
-  save(configs: NightscoutConfigs): void {
-    if (!this.safe.isEncryptionAvailable()) {
+  async save(configs: NightscoutConfigs): Promise<void> {
+    if (!(await this.safe.isAvailable())) {
       throw new Error('Secure storage is not available on this system')
     }
     fs.mkdirSync(path.dirname(this.file), { recursive: true })
-    fs.writeFileSync(this.file, this.safe.encryptString(JSON.stringify(configs)), {
+    fs.writeFileSync(this.file, await this.safe.encrypt(JSON.stringify(configs)), {
       mode: 0o600,
     })
   }

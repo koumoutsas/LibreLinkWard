@@ -126,7 +126,7 @@ describe('NightscoutClient reads', () => {
 
 describe('PollingService with a Nightscout source', () => {
   const setup = (check: () => Promise<void> = async () => {}) => {
-    const credentials = { loadAll: jest.fn(() => []), saveAll: jest.fn(), clear: jest.fn() }
+    const credentials = { loadAll: jest.fn(async () => []), saveAll: jest.fn(), clear: jest.fn() }
     const patients = createPatientStore()
     const source = {
       getConnections: jest.fn().mockResolvedValue([{ patientId: 'nightscout', firstName: 'Ann' }]),

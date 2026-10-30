@@ -4,10 +4,21 @@ import { Credentials } from '../shared/linkup'
 
 /** The subset of Electron's safeStorage we use; injectable for tests. */
 export interface SafeStorageLike {
-  isEncryptionAvailable(): boolean
-  encryptString(plain: string): Buffer
-  decryptString(encrypted: Buffer): string
+  isAvailable(): Promise<boolean>
+  encrypt(plain: string): Promise<Buffer>
+  decrypt(encrypted: Buffer): Promise<string>
 }
+
+/** Adapts Electron's safeStorage (async API) to SafeStorageLike. */
+export const toSafeStorage = (s: {
+  isAsyncEncryptionAvailable(): Promise<boolean>
+  encryptStringAsync(plain: string): Promise<Buffer>
+  decryptStringAsync(encrypted: Buffer): Promise<{ result: string }>
+}): SafeStorageLike => ({
+  isAvailable: () => s.isAsyncEncryptionAvailable(),
+  encrypt: (plain) => s.encryptStringAsync(plain),
+  decrypt: async (encrypted) => (await s.decryptStringAsync(encrypted)).result,
+})
 
 /** One LibreLinkUp login. Each login is one view in the UI. */
 export type LinkUpAccount = Credentials & { id: string; kind?: 'linkup' }
@@ -42,21 +53,21 @@ export class CredentialStore {
     private readonly safe: SafeStorageLike,
   ) {}
 
-  saveAll(accounts: StoredAccount[]): void {
-    if (!this.safe.isEncryptionAvailable()) {
+  async saveAll(accounts: StoredAccount[]): Promise<void> {
+    if (!(await this.safe.isAvailable())) {
       throw new Error('Secure credential storage is not available on this system')
     }
     fs.mkdirSync(path.dirname(this.file), { recursive: true })
-    fs.writeFileSync(this.file, this.safe.encryptString(JSON.stringify(accounts)), {
+    fs.writeFileSync(this.file, await this.safe.encrypt(JSON.stringify(accounts)), {
       mode: 0o600,
     })
   }
 
   /** Empty when nothing is stored. Reads the older single-login format too. */
-  loadAll(): StoredAccount[] {
+  async loadAll(): Promise<StoredAccount[]> {
     try {
-      if (!fs.existsSync(this.file) || !this.safe.isEncryptionAvailable()) return []
-      const parsed = JSON.parse(this.safe.decryptString(fs.readFileSync(this.file)))
+      if (!fs.existsSync(this.file) || !(await this.safe.isAvailable())) return []
+      const parsed = JSON.parse(await this.safe.decrypt(fs.readFileSync(this.file)))
       const list: unknown[] = Array.isArray(parsed) ? parsed : [parsed]
       return list
         .filter(valid)

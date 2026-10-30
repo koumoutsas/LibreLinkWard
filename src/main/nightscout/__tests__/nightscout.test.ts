@@ -65,20 +65,20 @@ describe('NightscoutClient', () => {
 
 describe('NightscoutConfigStore', () => {
   const safe = {
-    isEncryptionAvailable: () => true,
-    encryptString: (s: string) => Buffer.from(`enc:${s}`),
-    decryptString: (b: Buffer) => b.toString().replace(/^enc:/, ''),
+    isAvailable: async () => true,
+    encrypt: async (s: string) => Buffer.from(`enc:${s}`),
+    decrypt: async (b: Buffer) => b.toString().replace(/^enc:/, ''),
   }
 
-  it('round-trips encrypted and refuses plaintext fallback', () => {
+  it('round-trips encrypted and refuses plaintext fallback', async () => {
     const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ns-')), 'ns.bin')
     const cfg = { p1: { enabled: true, url: 'u', apiSecret: 's', deviceName: 'd' } }
-    new NightscoutConfigStore(file, safe).save(cfg)
+    await new NightscoutConfigStore(file, safe).save(cfg)
     expect(fs.readFileSync(file, 'utf8').startsWith('enc:')).toBe(true)
-    expect(new NightscoutConfigStore(file, safe).load()).toEqual(cfg)
-    expect(() =>
-      new NightscoutConfigStore(file, { ...safe, isEncryptionAvailable: () => false }).save(cfg),
-    ).toThrow()
+    expect(await new NightscoutConfigStore(file, safe).load()).toEqual(cfg)
+    await expect(
+      new NightscoutConfigStore(file, { ...safe, isAvailable: async () => false }).save(cfg),
+    ).rejects.toThrow()
   })
 })
 
