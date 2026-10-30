@@ -1,10 +1,33 @@
 {
   "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
   "testRunner": "jest",
-  "mutate": ["src/shared/**/*.ts", "!src/**/__tests__/**", "!**/*.d.ts"],
+  "mutate": [
+    "src/shared/**/*.ts",
+    "!src/**/__tests__/**",
+    "!**/*.d.ts"
+  ],
   "coverageAnalysis": "off",
-  "ignorePatterns": ["release", "coverage", "test-results", "dist", ".erb/dll", "e2e"],
-  "reporters": ["clear-text", "html"],
-  "htmlReporter": { "fileName": "reports/mutation/index.html" },
-  "tempDirName": ".stryker-tmp"
+  "ignorePatterns": [
+    "release",
+    "coverage",
+    "test-results",
+    "dist",
+    ".erb/dll",
+    "e2e"
+  ],
+  "reporters": [
+    "clear-text",
+    "html"
+  ],
+  "htmlReporter": {
+    "fileName": "reports/mutation/index.html"
+  },
+  "tempDirName": ".stryker-tmp",
+  "incremental": true,
+  "incrementalFile": ".stryker-tmp/incremental.json",
+  "thresholds": {
+    "high": 80,
+    "low": 70,
+    "break": 70
+  }
 }

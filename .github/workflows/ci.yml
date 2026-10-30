@@ -98,3 +98,30 @@ jobs:
           [ -n "$PREV_DEFAULT_KEYCHAIN" ] && security default-keychain -d user -s "$PREV_DEFAULT_KEYCHAIN"
           [ ${#LIST[@]} -gt 0 ] && security list-keychains -d user -s "${LIST[@]}"
           security delete-keychain "$E2E_KEYCHAIN" || true
+
+  mutation:
+    name: Mutation testing (src/shared)
+    needs: check
+    # Hosted Linux runner: slow (full run ~10 minutes) and unrelated to the
+    # macOS-specific checks above. Incremental, so later runs only re-test
+    # mutants affected by changes. Fails below the `break` threshold in
+    # stryker.config.json.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies
+        run: npm install --prefer-offline --legacy-peer-deps
+      - name: Restore incremental state
+        uses: actions/cache@v6
+        with:
+          path: .stryker-tmp/incremental.json
+          key: stryker-${{ github.ref_name }}-${{ github.sha }}
+          restore-keys: |
+            stryker-${{ github.ref_name }}-
+            stryker-development-
+      - name: Mutation tests
+        run: npm run test:mutation -- --reporters clear-text,progress
