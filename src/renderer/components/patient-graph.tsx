@@ -11,6 +11,7 @@ import {
 } from 'recharts'
 import type { GraphPoint } from '../../shared/linkup'
 import { ChartPoint, toChartData, toUnit } from '@/lib/glucose'
+import { ar2Forecast } from '../../shared/forecast'
 
 type Props = {
   history: GraphPoint[]
@@ -20,6 +21,8 @@ type Props = {
   windowMs: number
   /** Sparkline: no axes or grid, tooltip kept. */
   compact?: boolean
+  /** Overlay the AR2 forecast (ignored when compact). */
+  forecast?: boolean
   height?: number
 }
 
@@ -37,6 +40,7 @@ export function GraphTooltip({ active, payload, unit }: TooltipProps<number, str
     >
       <div className="font-semibold">
         {point.value} {unit}
+        {point.projected && ' (forecast)'}
       </div>
       <div className="text-muted-foreground">{formatTime(point.t)}</div>
     </div>
@@ -50,9 +54,30 @@ export function PatientGraph({
   targetHigh,
   windowMs,
   compact = false,
+  forecast = false,
   height = 300,
 }: Props) {
-  const data = toChartData(history, unit, windowMs)
+  const actual = toChartData(history, unit, windowMs)
+  const data: ChartPoint[] = [...actual]
+  if (forecast && !compact && actual.length > 0) {
+    const steps = ar2Forecast(actual.map((p) => ({ t: p.t, mgdl: p.mgdl })))
+    if (steps.length > 0) {
+      const last = actual[actual.length - 1]
+      // Anchor the forecast to the newest reading so the lines join up.
+      data[data.length - 1] = { ...last, forecast: last.value, forecastHigh: last.value, forecastLow: last.value }
+      for (const s of steps) {
+        data.push({
+          t: s.t,
+          mgdl: s.mgdl,
+          value: toUnit(s.mgdl, unit),
+          projected: true,
+          forecast: toUnit(s.mgdl, unit),
+          forecastHigh: toUnit(s.high, unit),
+          forecastLow: toUnit(s.low, unit),
+        })
+      }
+    }
+  }
   if (data.length === 0) {
     return (
       <div className="flex items-center justify-center text-sm text-muted-foreground" style={{ height }}>
@@ -60,7 +85,7 @@ export function PatientGraph({
       </div>
     )
   }
-  const values = data.map((d) => d.value)
+  const values = data.flatMap((d) => [d.value, d.forecastHigh ?? d.value, d.forecastLow ?? d.value])
   const low = toUnit(targetLow, unit)
   const high = toUnit(targetHigh, unit)
   const yMin = Math.min(...values, low)
@@ -92,6 +117,22 @@ export function PatientGraph({
             activeDot={{ r: 4 }}
             isAnimationActive={false}
           />
+          {data.some((d) => d.forecast !== undefined) && (
+            <>
+              <Line dataKey="forecastHigh" stroke="currentColor" strokeOpacity={0.3} strokeDasharray="2 4" dot={false} activeDot={false} isAnimationActive={false} />
+              <Line dataKey="forecastLow" stroke="currentColor" strokeOpacity={0.3} strokeDasharray="2 4" dot={false} activeDot={false} isAnimationActive={false} />
+              <Line
+                dataKey="forecast"
+                data-testid="forecast-line"
+                stroke="#8b5cf6"
+                strokeWidth={2}
+                strokeDasharray="5 4"
+                dot={false}
+                activeDot={{ r: 3 }}
+                isAnimationActive={false}
+              />
+            </>
+          )}
         </ComposedChart>
       </ResponsiveContainer>
     </div>

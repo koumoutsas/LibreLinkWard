@@ -278,14 +278,20 @@ describe('SettingsGeneralPage', () => {
     expect(ipc.ipcRenderer.sendMessage).toHaveBeenCalledWith('refresh-primary')
   })
 
+  it('toggles the AR2 forecast', () => {
+    open()
+    fireEvent.click(screen.getAllByRole('checkbox')[1])
+    expect(useAuthStore.getState().showForecast).toBe(true)
+  })
+
   it('reveals the sound options as alerts are switched on', async () => {
     open()
     const boxes = () => screen.getAllByRole('checkbox')
-    fireEvent.click(boxes()[1])
     fireEvent.click(boxes()[2])
     fireEvent.click(boxes()[3])
-    expect(useAlertStore.getState()).toMatchObject({ bringToFrontEnabled: true, flashWindowEnabled: true, audioAlertEnabled: true })
     fireEvent.click(boxes()[4])
+    expect(useAlertStore.getState()).toMatchObject({ bringToFrontEnabled: true, flashWindowEnabled: true, audioAlertEnabled: true })
+    fireEvent.click(boxes()[5])
     expect(useAlertStore.getState().useCustomSound).toBe(true)
     expect(screen.getByText('Upload Sound')).toBeInTheDocument()
   })

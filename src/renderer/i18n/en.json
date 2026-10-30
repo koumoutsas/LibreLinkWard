@@ -86,5 +86,7 @@
   "Max Value" : "Max Value",
   "Enter Value" : "Enter Value",
   "Apply Changes": "Apply Changes",
-  "Show glucose values in tray": "System Tray"
+  "Show glucose values in tray": "System Tray",
+  "Show AR2 forecast": "Show AR2 forecast",
+  "FORECAST_DESCRIPTION": "Dashed line on the patient graph (about 65 minutes ahead). A rough statistical estimate from the last two readings; do not use it for treatment decisions."
 }

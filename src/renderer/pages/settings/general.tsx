@@ -30,6 +30,9 @@ export default function SettingsGeneralPage() {
   const resultUnit = useAuthStore((state) => state.resultUnit)
   const setResultUnit = useAuthStore((state) => state.setResultUnit)
 
+  const showForecast = useAuthStore((state) => state.showForecast)
+  const setShowForecast = useAuthStore((state) => state.setShowForecast)
+
   const { setTheme } = useTheme()
   const setAndRefreshTheme = (t: ThemeType) => {
     setTheme(t)
@@ -177,6 +180,14 @@ export default function SettingsGeneralPage() {
             checked={trayVisible}
             onChange={handleToggleTray}
           />
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <div className="flex flex-row justify-between gap-4">
+            <p className="text-gray-400">{t('Show AR2 forecast')}</p>
+            <ToggleSwitch checked={showForecast} onChange={setShowForecast} />
+          </div>
+          <p className="text-xs text-gray-500">{t('FORECAST_DESCRIPTION')}</p>
         </div>
 
         <div className="text-gray-400">{t('ALERT_DESCRIPTION')}</div>

@@ -203,6 +203,13 @@ describe('PatientGraph', () => {
     render(<PatientGraph history={[pt(100, 20), pt(300, 10), pt(40, 0)] as any} unit={unit} targetLow={70} targetHigh={180} windowMs={3600000} compact={compact} />)
     expect(screen.getByTestId('patient-graph')).toBeInTheDocument()
   })
+  it('draws with the forecast overlay, and without enough data', () => {
+    const { unmount } = render(<PatientGraph history={[pt(100, 5), pt(110, 0)] as any} unit="mg/dL" targetLow={70} targetHigh={180} windowMs={3600000} forecast />)
+    expect(screen.getByTestId('patient-graph')).toBeInTheDocument()
+    unmount()
+    render(<PatientGraph history={[pt(110, 0)] as any} unit="mg/dL" targetLow={70} targetHigh={180} windowMs={3600000} forecast />)
+    expect(screen.getByTestId('patient-graph')).toBeInTheDocument()
+  })
 })
 
 describe('Dashboard extras', () => {

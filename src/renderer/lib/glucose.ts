@@ -27,7 +27,16 @@ export const LEVEL_CLASS: Record<GlucoseLevel, string> = {
   'urgent-high': 'bg-red-600',
 }
 
-export type ChartPoint = { t: number; mgdl: number; value: number }
+export type ChartPoint = {
+  t: number
+  mgdl: number
+  value: number
+  /** True for forecast steps, false/absent for readings. */
+  projected?: boolean
+  forecast?: number
+  forecastHigh?: number
+  forecastLow?: number
+}
 
 /** Points within the last `windowMs` of the newest reading, converted to `unit`. */
 export function toChartData(history: GraphPoint[], unit: string, windowMs: number): ChartPoint[] {
