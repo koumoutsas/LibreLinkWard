@@ -45,6 +45,12 @@ const createWindow = async () => {
 
   mainWindow.isPrimary = true;
 
+  // Renderer console output goes to the same log file, tagged so it can be told apart.
+  const rendererLog = log.scope('renderer')
+  mainWindow.webContents.on('console-message', ({ level, message, lineNumber, sourceId }) => {
+    rendererLog[level === 'warning' ? 'warn' : level](`${message} (${path.basename(sourceId)}:${lineNumber})`)
+  })
+
   // 👉 save window state
   const defaultWindowState: WindowState = {
     width: 1024,
