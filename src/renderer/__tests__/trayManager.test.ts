@@ -1,7 +1,7 @@
 const pages: string[] = []
 
 jest.mock('electron', () => {
-  const image = () => ({ setTemplateImage: jest.fn(), toPNG: jest.fn(() => Buffer.from('')), isEmpty: () => false, resize: jest.fn(() => image()) })
+  const image = (): any => ({ setTemplateImage: jest.fn(), toPNG: jest.fn(() => Buffer.from('')), isEmpty: () => false, resize: jest.fn(() => image()) })
   class BrowserWindow {
     webContents = {
       executeJavaScript: jest.fn(async () => 100),
