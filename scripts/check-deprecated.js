@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 // Lists installed packages whose registry metadata marks them deprecated.
 // Exits 1 if any are found. Usage: node scripts/check-deprecated.js [--prod]
-const { execFileSync } = require('child_process');
+const { execFileSync, execFile } = require('child_process');
+const { promisify } = require('util');
+
+const execFileAsync = promisify(execFile);
 
 const npm = (args) =>
   execFileSync('npm', args, {
@@ -30,25 +33,44 @@ const walk = (deps) => {
 };
 walk(tree.dependencies);
 
-const deprecated = [];
-for (const spec of installed.keys()) {
-  let message = '';
+const CONCURRENCY = 16;
+const specs = [...installed.keys()];
+const results = new Array(specs.length);
+
+const lookup = async (spec) => {
   try {
-    message = npm(['view', spec, 'deprecated', '--json']).trim();
+    const { stdout } = await execFileAsync('npm', ['view', spec, 'deprecated', '--json'], {
+      encoding: 'utf8',
+      maxBuffer: 16 * 1024 * 1024,
+    });
+    return stdout.trim();
   } catch {
-    continue;
+    return ''; // aliased packages (e.g. string-width-cjs) 404 on view
   }
-  if (message && message !== '""') {
-    deprecated.push({ spec, message: JSON.parse(message) });
+};
+
+let next = 0;
+const worker = async () => {
+  while (next < specs.length) {
+    const i = next++;
+    results[i] = await lookup(specs[i]);
   }
-}
+};
 
-if (deprecated.length === 0) {
-  console.log('No deprecated packages found.');
-  process.exit(0);
-}
+(async () => {
+  await Promise.all(Array.from({ length: CONCURRENCY }, worker));
 
-for (const { spec, message } of deprecated) {
-  console.log(`- ${spec}: ${message}`);
-}
-process.exit(1);
+  const deprecated = specs
+    .map((spec, i) => ({ spec, message: results[i] }))
+    .filter(({ message }) => message && message !== '""');
+
+  if (deprecated.length === 0) {
+    console.log('No deprecated packages found.');
+    return;
+  }
+
+  for (const { spec, message } of deprecated) {
+    console.log(`- ${spec}: ${JSON.parse(message)}`);
+  }
+  process.exitCode = 1;
+})();
