@@ -103,9 +103,10 @@ jobs:
     name: Mutation testing (src/shared)
     needs: check
     # Hosted Linux runner: slow (full run ~10 minutes) and unrelated to the
-    # macOS-specific checks above. Incremental, so later runs only re-test
-    # mutants affected by changes. Fails below the `break` threshold in
-    # stryker.config.json.
+    # macOS-specific checks above. Always a full run: Stryker's incremental
+    # mode cannot tell which mutants a changed test affects without perTest
+    # coverage, which this repo's mixed jest environments do not support.
+    # Fails below the `break` threshold in stryker.config.json.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -115,13 +116,5 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm install --prefer-offline --legacy-peer-deps
-      - name: Restore incremental state
-        uses: actions/cache@v6
-        with:
-          path: .stryker-tmp/incremental.json
-          key: stryker-${{ github.ref_name }}-${{ github.sha }}
-          restore-keys: |
-            stryker-${{ github.ref_name }}-
-            stryker-development-
       - name: Mutation tests
         run: npm run test:mutation -- --reporters clear-text,progress
