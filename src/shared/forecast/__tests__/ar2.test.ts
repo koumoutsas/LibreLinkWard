@@ -1,5 +1,7 @@
 import { ar2Forecast } from '../ar2'
 
+const COEF_PREV = -0.723
+const COEF_CURR = 1.716
 const MIN = 60000
 const at = (m: number, mgdl: number) => ({ t: m * MIN, mgdl })
 
@@ -52,5 +54,32 @@ describe('ar2Forecast', () => {
     expect(ar2Forecast([at(5, 100)])).toEqual([])
     expect(ar2Forecast([at(0, 100), at(20, 100)])).toEqual([])
     expect(ar2Forecast([at(0, 40), at(5, 30)])).toEqual([])
+  })
+
+  it('picks the closest of several candidates, the earlier one on a tie', () => {
+    const via = (m: number, v: number) => ar2Forecast([at(m, v), at(10, 110)])[0].mgdl
+    expect(ar2Forecast([at(4, 130), at(7, 90), at(10, 110)])[0].mgdl).toBe(via(4, 130))
+    expect(ar2Forecast([at(7, 90), at(4, 130), at(10, 110)])[0].mgdl).toBe(via(4, 130))
+    expect(ar2Forecast([at(3, 130), at(7, 90), at(10, 110)])[0].mgdl).toBe(via(3, 130))
+  })
+
+  it('accepts a previous reading exactly half a step off, but not further', () => {
+    expect(ar2Forecast([at(2.5, 100), at(10, 100)])).toHaveLength(13)
+    expect(ar2Forecast([at(2.4, 100), at(10, 100)])).toEqual([])
+    expect(ar2Forecast([at(0, 100), at(10, 100)])).toEqual([])
+  })
+
+  it('applies the boundary of the input guards', () => {
+    expect(ar2Forecast([at(0, 100), at(5, 36)])).toHaveLength(13)
+    expect(ar2Forecast([at(0, 100), at(5, 35)])).toEqual([])
+    expect(ar2Forecast([at(0, 0), at(5, 100)])).toEqual([])
+    expect(ar2Forecast([at(0, -5), at(5, 100)])).toEqual([])
+  })
+
+  it('sizes the cone as coneFactor times the step multiplier around the line', () => {
+    const f = ar2Forecast([at(0, 100), at(5, 120)], 3)
+    const curr = COEF_PREV * Math.log(100 / 140) + COEF_CURR * Math.log(120 / 140)
+    expect(f[0].high).toBe(Math.round(140 * Math.exp(curr + 3 * 0.02)))
+    expect(f[0].low).toBe(Math.round(140 * Math.exp(curr - 3 * 0.02)))
   })
 })

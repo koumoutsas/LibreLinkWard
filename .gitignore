@@ -159,3 +159,7 @@ dist
 # Playwright
 test-results/
 playwright-report/
+
+# Stryker
+.stryker-tmp/
+reports/
