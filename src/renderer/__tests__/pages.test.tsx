@@ -282,6 +282,7 @@ describe('SettingsGeneralPage', () => {
     open()
     fireEvent.click(screen.getAllByRole('checkbox')[1])
     expect(useAuthStore.getState().showForecast).toBe(true)
+    expect(ipc.ipcRenderer.sendMessage).toHaveBeenCalledWith('refresh-primary')
   })
 
   it('reveals the sound options as alerts are switched on', async () => {

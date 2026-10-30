@@ -32,6 +32,10 @@ export default function SettingsGeneralPage() {
 
   const showForecast = useAuthStore((state) => state.showForecast)
   const setShowForecast = useAuthStore((state) => state.setShowForecast)
+  const handleSetShowForecast = (value: boolean) => {
+    setShowForecast(value)
+    sendRefreshPrimaryWindow()
+  }
 
   const { setTheme } = useTheme()
   const setAndRefreshTheme = (t: ThemeType) => {
@@ -185,7 +189,7 @@ export default function SettingsGeneralPage() {
         <div className="flex flex-col gap-1">
           <div className="flex flex-row justify-between gap-4">
             <p className="text-gray-400">{t('Show AR2 forecast')}</p>
-            <ToggleSwitch checked={showForecast} onChange={setShowForecast} />
+            <ToggleSwitch checked={showForecast} onChange={handleSetShowForecast} />
           </div>
           <p className="text-xs text-gray-500">{t('FORECAST_DESCRIPTION')}</p>
         </div>
