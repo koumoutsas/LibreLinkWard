@@ -20,6 +20,8 @@ jobs:
       - run: npm install --prefer-offline --legacy-peer-deps --ignore-scripts
 
       - name: Audit production dependencies
+        id: audit
+        continue-on-error: true
         run: npm audit --omit=dev --audit-level=high
 
       - name: Find deprecated packages
@@ -49,3 +51,7 @@ jobs:
           else
             gh issue create --title "$title" --body "$body"
           fi
+
+      - name: Fail on audit findings
+        if: steps.audit.outcome == 'failure'
+        run: exit 1
