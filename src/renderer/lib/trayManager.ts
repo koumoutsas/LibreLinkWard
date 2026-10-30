@@ -82,6 +82,8 @@ class TrayManager {
   private tooltipWindow: BrowserWindow | null = null;
   /** macOS: the readings drawn as a template image, so the text size is ours to choose. */
   private textImage: Electron.NativeImage | null = null;
+  /** What the macOS image draws: one coloured pill per value in the title. */
+  private traySegments: { text: string; color: string }[] = [];
   private textRenderId = 0;
   private isShowingTooltip: boolean = false;
 
@@ -172,6 +174,16 @@ class TrayManager {
       `${this.formatDisplayNumber(this.clampNumber(convert(r.mgdl)))}${this.trendText(r.trend)}`;
     this.state.trayTitle =
       fresh.length === 0 ? '--' : fresh.length > 1 ? `${fmt(lowest)}–${fmt(highest)}` : fmt(highest);
+    this.state.currentUnit = unit;
+    const pill = (r: TrayReading) => ({
+      text: fmt(r),
+      color: this.rgbToCss(this.getBackgroundColorForGlucoseLevel(
+        this.clampNumber(convert(r.mgdl)), r.targetLow, r.targetHigh,
+      )),
+    });
+    this.traySegments =
+      fresh.length === 0 ? [{ text: '--', color: 'rgb(107, 114, 128)' }]
+        : fresh.length > 1 ? [pill(lowest), pill(highest)] : [pill(highest)];
     this.updateTrayNumber(convert(highest.mgdl), unit, highest.targetLow, highest.targetHigh);
   }
 
@@ -179,6 +191,7 @@ class TrayManager {
   private clearReadings(): void {
     this.state.readings = [];
     this.state.trayTitle = '';
+    this.traySegments = [];
     if (!this.state.tray || !this.state.isCreated) return;
     this.textImage = null;
     this.textRenderId++;
@@ -252,7 +265,7 @@ class TrayManager {
       : this.createIconFromFile();
   }
 
-  /** Draws the readings as text in a hidden window. macOS: black on transparent, tinted as a template image. Linux: white on a pill coloured by glucose level, readable on any panel theme. */
+  /** Draws the readings as text in a hidden window. macOS: white on one pill per value, coloured by glucose level. Linux: white on a pill coloured by glucose level, readable on any panel theme. */
   private async renderTextImage(text: string): Promise<Electron.NativeImage> {
     if (process.platform === 'linux') return this.renderSquareImage(text);
     const win = new BrowserWindow({
@@ -264,18 +277,20 @@ class TrayManager {
       webPreferences: { offscreen: true, contextIsolation: true },
     });
     try {
-      const html = `<body style="margin:0;background:transparent;overflow:hidden"><span id="t" style="display:inline-block;white-space:nowrap;`
-        + `font:500 ${TRAY_TEXT_FONT_PX * TRAY_TEXT_SCALE}px/${TRAY_TEXT_HEIGHT_PX * TRAY_TEXT_SCALE}px -apple-system,BlinkMacSystemFont,sans-serif;`
-        + `font-variant-numeric:tabular-nums;color:#000">${this.escapeHtml(text)}</span></body>`;
+      const segments = this.traySegments.length > 0 ? this.traySegments : [{ text, color: 'rgb(107, 114, 128)' }];
+      const pills = segments
+        .map((s) => `<span style="background:${s.color};padding:0 ${5 * TRAY_TEXT_SCALE}px;border-radius:${4 * TRAY_TEXT_SCALE}px">${this.escapeHtml(s.text)}</span>`)
+        .join('');
+      const html = `<body style="margin:0;background:transparent;overflow:hidden"><div id="t" style="display:inline-flex;gap:${3 * TRAY_TEXT_SCALE}px;`
+        + `white-space:nowrap;font:600 ${14 * TRAY_TEXT_SCALE}px/${TRAY_TEXT_HEIGHT_PX * TRAY_TEXT_SCALE}px -apple-system,BlinkMacSystemFont,sans-serif;`
+        + `font-variant-numeric:tabular-nums;color:#fff">${pills}</div></body>`;
       await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
       const width = Math.ceil(await win.webContents.executeJavaScript('document.getElementById("t").getBoundingClientRect().width'));
       const height = TRAY_TEXT_HEIGHT_PX * TRAY_TEXT_SCALE;
       win.setContentSize(width, height);
       await new Promise((resolve) => setTimeout(resolve, 50));
       const captured = await win.webContents.capturePage({ x: 0, y: 0, width, height });
-      const image = nativeImage.createFromBuffer(captured.toPNG(), { scaleFactor: TRAY_TEXT_SCALE });
-      image.setTemplateImage(true);
-      return image;
+      return nativeImage.createFromBuffer(captured.toPNG(), { scaleFactor: TRAY_TEXT_SCALE });
     } finally {
       win.destroy();
     }
