@@ -26,7 +26,9 @@ As there is no official API from [Abbott](https://www.freestyle.abbott/), the Li
 - mg/dL and mmol/L, dark mode.
 
 ## Setup
-1. Install LibreLinkWard from [GitHub Releases](https://github.com/koumoutsas/LibreLinkWard/releases). Builds are **unsigned**, so macOS asks you to allow it in _System Settings > Privacy & Security_ and Windows SmartScreen shows a warning.
+1. Install LibreLinkWard from [GitHub Releases](https://github.com/koumoutsas/LibreLinkWard/releases). Builds are **not notarized**, so macOS and Windows warn on first launch (see below).
+   - **macOS**: opening the app shows _"Apple could not verify “LibreLinkWard” is free of malware…"_. Click **Done** (not _Move to Trash_), open _System Settings > Privacy & Security_, scroll to **Security**, click **Open Anyway** next to the LibreLinkWard message and confirm with your password. This is needed once; the app opens normally afterwards. Right-click > Open no longer works on macOS 15 and later. To skip the dialogs, run `xattr -cr /Applications/LibreLinkWard.app` in Terminal.
+   - **Windows**: SmartScreen shows a warning; click **More info** then **Run anyway**.
 2. Sign in with a patient's LibreLinkUp credentials. The operator needs no Libre account of their own.
 3. Press **Add patient** on the dashboard and enter the next patient's credentials. Each login becomes its own view, stacked vertically below the others. Remove a view with **Remove**.
 
@@ -67,7 +69,7 @@ Requires Node 22.15+. `npm install --legacy-peer-deps`
 | Windows | nsis `-setup.exe`, msi | blocking |
 | Linux | AppImage, deb | best effort (e2e non-blocking) |
 
-CI (`.github/workflows/ci.yml`) runs typecheck, tests with coverage and a packaged-app smoke test on all three systems. Pushing a tag runs `build-and-release.yml`. macOS notarization only runs if the `APPLE_ID` / `APPLE_ID_PASS` secrets are set; there is no code signing for macOS or Windows yet.
+CI (`.github/workflows/ci.yml`) runs typecheck, tests with coverage and a packaged-app smoke test on all three systems. Pushing a tag runs `build-and-release.yml`. macOS notarization only runs if the `APPLE_ID` / `APPLE_ID_PASS` secrets are set; macOS builds are signed ad-hoc only (no Developer ID), and there is no code signing for Windows yet.
 
 # Screenshots
 
