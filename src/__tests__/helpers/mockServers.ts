@@ -131,6 +131,10 @@ export async function startMockNightscout(secret = 'ns-secret') {
     if (req.url === '/api/v1/status.json') return { status: 200, body: { status: 'ok' } }
     if (req.headers['api-secret'] !== hashSecret(secret)) return { status: 401 }
     if (req.url === '/api/v1/verifyauth') return { status: 200, body: { message: 'OK' } }
+    if (req.url?.startsWith('/api/v1/entries/sgv.json') && req.method === 'GET') {
+      const since = Number(/\[\$gte\]=(\d+)/.exec(req.url)?.[1] ?? 0)
+      return { status: 200, body: state.entries.filter((e) => e.date >= since).sort((x, y) => y.date - x.date) }
+    }
     if (req.url?.startsWith('/api/v1/entries.json') && req.method === 'GET') {
       const newest = [...state.entries].sort((a, b) => b.date - a.date).slice(0, 1)
       return { status: 200, body: newest }
