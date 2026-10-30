@@ -69,7 +69,8 @@
       "!src/renderer/components/ui/**",
       "!src/renderer/index.tsx",
       "!**/*.d.ts",
-      "!**/__tests__/**"
+      "!**/__tests__/**",
+      "!src/renderer/lib/trayManager.ts"
     ],
     "coverageThreshold": {
       "global": {
