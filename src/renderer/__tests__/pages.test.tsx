@@ -295,14 +295,14 @@ describe('SettingsGeneralPage', () => {
     beforeEach(() => {
       useAlertStore.setState({ audioAlertEnabled: true, useCustomSound: true })
       const create = document.createElement.bind(document)
-      jest.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+      jest.spyOn(document, 'createElement').mockImplementation(((tag: string) => {
         const el = create(tag)
         if (tag === 'input') {
           input = el as HTMLInputElement
           jest.spyOn(el, 'click').mockImplementation(() => {})
         }
         return el
-      })
+      }) as any)
     })
     afterEach(() => jest.restoreAllMocks())
 
