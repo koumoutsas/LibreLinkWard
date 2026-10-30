@@ -26,7 +26,9 @@ app.setName('LibreLinkWard')
 
 // Writes ~/Library/Logs/LibreLinkWard/main.log (the platform equivalent elsewhere),
 // and routes console output and uncaught errors from the main process into it.
+// Packaged builds keep only warnings and errors.
 log.initialize()
+if (app.isPackaged) log.transports.file.level = 'warn'
 log.errorHandler.startCatching()
 Object.assign(console, log.functions)
 
