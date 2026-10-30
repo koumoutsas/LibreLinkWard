@@ -5,6 +5,7 @@ import {
   defaultAlarmConfig,
   isSnoozed,
   mergeHistory,
+  pointTime,
   resolveAlarmConfig,
 } from '..'
 
@@ -108,5 +109,98 @@ describe('patientStore with several logins', () => {
     store.getState().applyConnections([{ patientId: 'b' }] as any, 'bob')
     store.getState().removeAccount('ann')
     expect(Object.keys(store.getState().patients)).toEqual(['b'])
+  })
+})
+
+describe('pointTime', () => {
+  const utc = Date.UTC(2026, 9, 28, 12, 15, 30)
+
+  it('reads the Timestamp when there is no FactoryTimestamp', () => {
+    expect(pointTime({ Timestamp: '2026-10-28T12:15:30Z', ValueInMgPerDl: 1 })).toBe(utc)
+  })
+
+  it('prefers the FactoryTimestamp', () => {
+    const p = { Timestamp: '2026-01-01T00:00:00Z', FactoryTimestamp: '2026-10-28T12:15:30Z', ValueInMgPerDl: 1 }
+    expect(pointTime(p)).toBe(utc)
+  })
+
+  it.each([
+    ['Z', '2026-10-28T12:15:30Z', utc],
+    ['a +hh:mm offset', '2026-10-28T14:15:30+02:00', utc],
+    ['a -hh:mm offset', '2026-10-28T07:15:30-05:00', utc],
+    ['a +hhmm offset', '2026-10-28T14:15:30+0200', utc],
+  ])('keeps an explicit zone: %s', (_n, ts, expected) => {
+    expect(pointTime({ Timestamp: ts, FactoryTimestamp: ts, ValueInMgPerDl: 1 })).toBe(expected)
+  })
+
+  describe('in a zone away from UTC', () => {
+    const tz = process.env.TZ
+    beforeAll(() => {
+      process.env.TZ = 'America/New_York'
+    })
+    afterAll(() => {
+      if (tz === undefined) delete process.env.TZ
+      else process.env.TZ = tz
+    })
+
+    it('reads a zoneless ISO FactoryTimestamp as UTC', () => {
+      const ts = '2026-10-28T12:15:30'
+      expect(pointTime({ Timestamp: ts, FactoryTimestamp: ts, ValueInMgPerDl: 1 })).toBe(utc)
+    })
+
+    it('reads a zoneless "M/D/YYYY h:mm:ss PM" FactoryTimestamp as UTC', () => {
+      const ts = '10/28/2026 12:15:30 PM'
+      expect(pointTime({ Timestamp: ts, FactoryTimestamp: ts, ValueInMgPerDl: 1 })).toBe(utc)
+    })
+  })
+})
+
+describe('mergeHistory edge cases', () => {
+  const bare = (ts: string) => ({ Timestamp: ts, ValueInMgPerDl: 100 })
+
+  it('keeps distinct points that only have a Timestamp', () => {
+    const merged = mergeHistory([], [bare('2026-10-23T08:00:00Z'), bare('2026-10-23T08:05:00Z')])
+    expect(merged).toHaveLength(2)
+  })
+
+  it('drops points with an unparseable timestamp, and is empty when none parse', () => {
+    const good = pt('2026-10-23T08:00:00Z')
+    expect(mergeHistory([], [good, pt('garbage')])).toEqual([good])
+    expect(mergeHistory([], [pt('garbage')])).toEqual([])
+  })
+
+  it('keeps a point exactly on the window edge', () => {
+    const edge = pt('2026-10-23T00:00:00Z')
+    const newest = pt('2026-10-23T12:00:00Z')
+    expect(mergeHistory([edge], [newest])).toEqual([edge, newest])
+    expect(mergeHistory([pt('2026-10-22T23:59:59Z')], [newest])).toEqual([newest])
+  })
+})
+
+describe('patientStore fallbacks', () => {
+  it('applyConnections starts a new patient ok with empty history', () => {
+    const s = createPatientStore()
+    s.getState().applyConnections([{ patientId: 'p1' }])
+    expect(s.getState().patients.p1).toMatchObject({ status: 'ok', history: [], name: 'p1' })
+  })
+
+  it('applyConnections keeps an existing error status and targets, but takes new targets', () => {
+    const s = createPatientStore()
+    s.getState().applyConnections([{ patientId: 'p1', targetLow: 80, targetHigh: 160 }])
+    s.getState().setError('p1', 'boom')
+    s.getState().applyConnections([{ patientId: 'p1' }])
+    expect(s.getState().patients.p1).toMatchObject({ status: 'error', targetLow: 80, targetHigh: 160 })
+    s.getState().applyConnections([{ patientId: 'p1', targetLow: 90, targetHigh: 170 }])
+    expect(s.getState().patients.p1).toMatchObject({ targetLow: 90, targetHigh: 170 })
+  })
+
+  it('applyGraph copes with a first graph that has no targets, then keeps them', () => {
+    const s = createPatientStore()
+    const bare = { connection: { patientId: 'p1' }, graphData: [pt('2026-10-23T08:00:00Z')] }
+    s.getState().applyGraph('p1', bare, 1)
+    expect(s.getState().patients.p1.targetLow).toBeUndefined()
+    s.getState().applyConnections([{ patientId: 'p1', targetLow: 80, targetHigh: 160 }])
+    s.getState().applyGraph('p1', bare, 2)
+    expect(s.getState().patients.p1).toMatchObject({ targetLow: 80, targetHigh: 160 })
   })
 })

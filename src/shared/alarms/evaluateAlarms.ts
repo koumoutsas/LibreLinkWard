@@ -113,8 +113,7 @@ function currentKind(input: EvaluateInput, prev: AlarmEngineState): AlarmKind | 
   const { latest, lastUpdated, config, now } = input
   if (isStale(latest, lastUpdated, config.signalLossMinutes, now)) return 'signal-loss'
   if (!latest) return undefined
-  const prevLevel = prev.active === 'signal-loss' || prev.active?.startsWith('predicted') ? undefined : prev.active
-  const level = glucoseLevel(latest.ValueInMgPerDl, withHysteresis(config, prevLevel))
+  const level = glucoseLevel(latest.ValueInMgPerDl, withHysteresis(config, prev.active))
   if (level !== 'in-range') return level
   return config.predictive ? predictedKind(input.history ?? [], config, prev.active) : undefined
 }

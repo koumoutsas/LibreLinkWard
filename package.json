@@ -89,6 +89,7 @@
     "testPathIgnorePatterns": [
       "release/app/dist",
       ".erb/dll",
+      "<rootDir>/.stryker-tmp/",
       "/__tests__/helpers/",
       "<rootDir>/e2e/"
     ],

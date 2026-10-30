@@ -65,6 +65,28 @@ describe('evaluateAlarms', () => {
     expect(run(170, high).state).toEqual({})
   })
 
+  it.each([
+    [55, 'low'],
+    [70, undefined],
+    [180, undefined],
+    [250, 'high'],
+  ])('treats %i exactly on a threshold as %s', (value, kind) => {
+    expect(run(value).state.active).toBe(kind)
+  })
+
+  it('applies hysteresis to the urgent thresholds and to the low side beneath them', () => {
+    const urgentLow = run(50).state
+    expect(run(58, urgentLow).state.active).toBe('urgent-low')
+    expect(run(62, urgentLow).state.active).toBe('low')
+    expect(run(68, urgentLow).state.active).toBe('low')
+    expect(run(76, urgentLow).state).toEqual({})
+    const urgentHigh = run(260).state
+    expect(run(248, urgentHigh).state.active).toBe('urgent-high')
+    expect(run(240, urgentHigh).state.active).toBe('high')
+    expect(run(176, urgentHigh).state.active).toBe('high')
+    expect(run(170, urgentHigh).state).toEqual({})
+  })
+
   it('does not notify while snoozed, then notifies when the snooze ends', () => {
     const snoozed = run(60, undefined, { snoozed: true })
     expect(snoozed.events).toEqual([])
