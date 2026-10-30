@@ -181,6 +181,15 @@ describe('PatientPage', () => {
     expect(ipc.ipcRenderer.sendMessage).toHaveBeenCalledWith('open-new-window', '/settings/patients/p1', 1024, 768)
   })
 
+  it('shows -- instead of the value when the reading is older than the signal-loss timeout', async () => {
+    const old = new Date(Date.now() - 90 * 60000).toISOString()
+    const latest = { Timestamp: old, FactoryTimestamp: old, ValueInMgPerDl: 100, TrendArrow: 3 }
+    mount([{ ...p, latest, history: [latest] }], { low: 65, high: 170, signalLossMinutes: 20 })
+    expect(await screen.findByText('Alice')).toBeInTheDocument()
+    expect(screen.getByText('--')).toBeInTheDocument()
+    expect(screen.queryByText('100')).not.toBeInTheDocument()
+  })
+
   it('handles a patient without readings or targets', async () => {
     mount([{ ...p, latest: undefined, history: [], targetLow: undefined, targetHigh: undefined }], undefined)
     expect(await screen.findByText('Alice')).toBeInTheDocument()

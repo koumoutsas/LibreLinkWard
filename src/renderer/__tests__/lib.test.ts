@@ -256,5 +256,45 @@ describe('hooks', () => {
         ),
       )
     })
+
+    it('flags an old reading as stale even when no signal-loss alarm is active', async () => {
+      const old = new Date(Date.now() - 90 * 60000).toISOString()
+      const latest = { Timestamp: old, FactoryTimestamp: old, ValueInMgPerDl: 110 }
+      const ipc = stubElectron(async (ch) =>
+        ch === 'linkup:get-state'
+          ? { status: 'running', patients: [{ patientId: 'a', name: 'A', latest, targetLow: 70, targetHigh: 180 }] }
+          : ch === 'alarms:get'
+            ? { signalLossMinutes: 20 }
+            : undefined,
+      )
+      renderHook(() => useTrayReadings())
+      await waitFor(() =>
+        expect(ipc.ipcRenderer.sendMessage).toHaveBeenCalledWith(
+          'update-tray-readings',
+          [{ name: 'A', mgdl: 110, targetLow: 70, targetHigh: 180, trend: 3, stale: true }],
+          'mg/dL',
+        ),
+      )
+    })
+
+    it("uses the patient's own signal-loss timeout", async () => {
+      const t = new Date(Date.now() - 90 * 60000).toISOString()
+      const latest = { Timestamp: t, FactoryTimestamp: t, ValueInMgPerDl: 110 }
+      const ipc = stubElectron(async (ch) =>
+        ch === 'linkup:get-state'
+          ? { status: 'running', patients: [{ patientId: 'a', name: 'A', latest, targetLow: 70, targetHigh: 180 }] }
+          : ch === 'alarms:get'
+            ? { signalLossMinutes: 180 }
+            : undefined,
+      )
+      renderHook(() => useTrayReadings())
+      await waitFor(() =>
+        expect(ipc.ipcRenderer.sendMessage).toHaveBeenLastCalledWith(
+          'update-tray-readings',
+          [{ name: 'A', mgdl: 110, targetLow: 70, targetHigh: 180, trend: 3, stale: false }],
+          'mg/dL',
+        ),
+      )
+    })
   })
 })
