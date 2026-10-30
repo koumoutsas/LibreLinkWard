@@ -229,6 +229,7 @@
       ],
       "icon": "assets/icon.png",
       "type": "distribution",
+      "identity": "-",
       "hardenedRuntime": true,
       "entitlements": "assets/entitlements.mac.plist",
       "entitlementsInherit": "assets/entitlements.mac.plist",
