@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: read
-  issues: write
 
 jobs:
   health:
@@ -27,7 +26,9 @@ jobs:
       - name: Find deprecated packages
         id: deprecated
         continue-on-error: true
-        run: node scripts/check-deprecated.js | tee deprecated.txt
+        run: |
+          set -o pipefail
+          node scripts/check-deprecated.js | tee deprecated.txt
 
       - name: Report outdated packages
         run: |
@@ -38,20 +39,14 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Open or update deprecation issue
+      - name: Report deprecated packages
         if: steps.deprecated.outcome == 'failure'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          title='Deprecated dependencies'
-          body="$(printf 'These installed packages are marked deprecated on npm:\n\n%s\n' "$(cat deprecated.txt)")"
-          number="$(gh issue list --search "$title in:title" --state open --json number --jq '.[0].number')"
-          if [ -n "$number" ]; then
-            gh issue edit "$number" --body "$body"
-          else
-            gh issue create --title "$title" --body "$body"
-          fi
+          {
+            echo '### Deprecated packages'
+            cat deprecated.txt
+          } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Fail on audit findings
-        if: steps.audit.outcome == 'failure'
+      - name: Fail on audit or deprecation findings
+        if: steps.audit.outcome == 'failure' || steps.deprecated.outcome == 'failure'
         run: exit 1
