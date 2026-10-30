@@ -65,6 +65,10 @@
       "src/main/{alarmService,pollingService,credentialStore}.ts",
       "src/main/nightscout/*.ts",
       "src/renderer/lib/glucose.ts",
+      "src/renderer/**/*.{ts,tsx}",
+      "!src/renderer/components/ui/**",
+      "!src/renderer/index.tsx",
+      "!**/*.d.ts",
       "!**/__tests__/**"
     ],
     "coverageThreshold": {
