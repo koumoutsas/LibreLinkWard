@@ -283,6 +283,8 @@ describe('SettingsGeneralPage', () => {
     open()
     fireEvent.click(screen.getAllByRole('checkbox')[1])
     expect(useAuthStore.getState().showForecast).toBe(true)
+    expect(ipc.ipcRenderer.sendMessage).not.toHaveBeenCalledWith('refresh-primary')
+    fireEvent.click(screen.getByText('Apply Changes'))
     expect(ipc.ipcRenderer.sendMessage).toHaveBeenCalledWith('refresh-primary')
   })
 
