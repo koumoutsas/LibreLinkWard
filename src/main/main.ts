@@ -22,6 +22,8 @@ import { destroyTray, hasTray } from './../renderer/lib/trayManager';
 //   }
 // }
 
+app.setName('LibreLinkWard')
+
 let mainWindow: BrowserWindow | null = null
 let isQuitting = false
 
