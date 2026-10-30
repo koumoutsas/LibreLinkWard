@@ -71,9 +71,30 @@ jobs:
         run: npm install --prefer-offline --legacy-peer-deps
       - name: Package unpacked app
         run: npm run package:dir
+      # The app encrypts credentials with the macOS keychain (safeStorage). A runner service has no unlocked login
+      # keychain (errSecInteractionNotAllowed), so the test gets a throwaway one; the previous setup is restored after.
+      - name: Use a throwaway keychain (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/e2e.keychain-db"
+          echo "PREV_DEFAULT_KEYCHAIN=$(security default-keychain -d user | tr -d ' "')" >> "$GITHUB_ENV"
+          echo "PREV_KEYCHAIN_LIST=$(security list-keychains -d user | tr -d ' "' | tr '\n' ':')" >> "$GITHUB_ENV"
+          echo "E2E_KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
+          security create-keychain -p e2e "$KEYCHAIN"
+          security set-keychain-settings -lut 3600 "$KEYCHAIN"
+          security unlock-keychain -p e2e "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN"
+          security default-keychain -d user -s "$KEYCHAIN"
       - name: Run Playwright smoke test (Linux, virtual display)
         if: runner.os == 'Linux'
         run: xvfb-run --auto-servernum npm run test:e2e
       - name: Run Playwright smoke test
         if: runner.os != 'Linux'
         run: npm run test:e2e
+      - name: Restore keychains (macOS)
+        if: always() && runner.os == 'macOS' && env.E2E_KEYCHAIN != ''
+        run: |
+          IFS=':' read -ra LIST <<< "$PREV_KEYCHAIN_LIST"
+          [ -n "$PREV_DEFAULT_KEYCHAIN" ] && security default-keychain -d user -s "$PREV_DEFAULT_KEYCHAIN"
+          [ ${#LIST[@]} -gt 0 ] && security list-keychains -d user -s "${LIST[@]}"
+          security delete-keychain "$E2E_KEYCHAIN" || true
