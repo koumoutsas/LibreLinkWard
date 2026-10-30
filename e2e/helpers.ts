@@ -37,6 +37,12 @@ export async function launchApp(): Promise<{ app: ElectronApplication; cleanup: 
     executablePath: findExecutable(),
     args: [`--user-data-dir=${userData}`, ...(process.platform === 'linux' ? ['--no-sandbox'] : [])],
   })
+  // Main-process output and renderer console, so a failing run shows why (in CI there is no other window into the app).
+  const log = (source: string) => (data: Buffer | string) =>
+    String(data).split('\n').filter(Boolean).forEach((line) => console.log(`[app ${source}] ${line}`))
+  app.process().stdout?.on('data', log('stdout'))
+  app.process().stderr?.on('data', log('stderr'))
+  app.on('window', (win) => win.on('console', (msg) => console.log(`[app console.${msg.type()}] ${msg.text()}`)))
   return {
     app,
     cleanup: async () => {

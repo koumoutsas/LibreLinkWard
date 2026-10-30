@@ -29,7 +29,10 @@ test('signed in: add a Nightscout patient, open it, change settings and remove t
     await win.getByRole('button', { name: 'Add', exact: true }).click()
 
     const card = win.locator('[data-testid^="patient-card-"]')
-    await expect(card).toContainText('Kid', { timeout: 30_000 })
+    await expect(card).toContainText('Kid', { timeout: 30_000 }).catch(async (error) => {
+      console.log(`[app page text] ${await win.locator('body').innerText().catch(() => '(unreadable)')}`)
+      throw error
+    })
     await expect(card).toContainText('123')
 
     // Patient page.
