@@ -1,6 +1,6 @@
 {
   "name": "librelinkward",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "This is a desktop application that fetches your blood sugar from LibreLinkUp",
   "license": "Apache-2.0",
   "author": "Yannis Ioannidis <jfioannidis@gmail.com> (https://github.com/koumoutsas/LibreLinkWard)",
