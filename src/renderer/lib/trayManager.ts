@@ -181,9 +181,12 @@ class TrayManager {
         this.clampNumber(convert(r.mgdl)), r.targetLow, r.targetHigh,
       )),
     });
+    const noSignal = { text: '--', color: 'rgb(107, 114, 128)' };
     this.traySegments =
-      fresh.length === 0 ? [{ text: '--', color: 'rgb(107, 114, 128)' }]
+      fresh.length === 0 ? [noSignal]
         : fresh.length > 1 ? [pill(lowest), pill(highest)] : [pill(highest)];
+    // A patient without signal must stay visible next to the ones that still have values.
+    if (fresh.length > 0 && fresh.length < readings.length) this.traySegments.push(noSignal);
     this.updateTrayNumber(convert(highest.mgdl), unit, highest.targetLow, highest.targetHigh);
   }
 
