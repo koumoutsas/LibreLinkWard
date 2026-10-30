@@ -3,6 +3,7 @@ import {
   ComposedChart,
   Line,
   ReferenceArea,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   TooltipProps,
@@ -23,6 +24,8 @@ type Props = {
   compact?: boolean
   /** Overlay the AR2 forecast (ignored when compact). */
   forecast?: boolean
+  /** Also draw the cone around the forecast. */
+  forecastCone?: boolean
   height?: number
 }
 
@@ -55,6 +58,7 @@ export function PatientGraph({
   windowMs,
   compact = false,
   forecast = false,
+  forecastCone = false,
   height = 300,
 }: Props) {
   const actual = toChartData(history, unit, windowMs)
@@ -85,7 +89,12 @@ export function PatientGraph({
       </div>
     )
   }
-  const values = data.flatMap((d) => [d.value, d.forecastHigh ?? d.value, d.forecastLow ?? d.value])
+  const forecastStart = actual.length > 0 ? actual[actual.length - 1].t : undefined
+  const forecastEnd = data[data.length - 1].t
+  const hasForecast = data.some((d) => d.forecast !== undefined)
+  const values = data.flatMap((d) =>
+    forecastCone ? [d.value, d.forecastHigh ?? d.value, d.forecastLow ?? d.value] : [d.value],
+  )
   const low = toUnit(targetLow, unit)
   const high = toUnit(targetHigh, unit)
   const yMin = Math.min(...values, low)
@@ -117,17 +126,23 @@ export function PatientGraph({
             activeDot={{ r: 4 }}
             isAnimationActive={false}
           />
-          {data.some((d) => d.forecast !== undefined) && (
+          {hasForecast && forecastStart !== undefined && (
             <>
-              <Line dataKey="forecastHigh" stroke="currentColor" strokeOpacity={0.3} strokeDasharray="2 4" dot={false} activeDot={false} isAnimationActive={false} />
-              <Line dataKey="forecastLow" stroke="currentColor" strokeOpacity={0.3} strokeDasharray="2 4" dot={false} activeDot={false} isAnimationActive={false} />
+              <ReferenceArea x1={forecastStart} x2={forecastEnd} fill="#8b5cf6" fillOpacity={0.08} ifOverflow="extendDomain" />
+              <ReferenceLine x={forecastStart} stroke="#8b5cf6" strokeOpacity={0.6} strokeDasharray="3 3" />
+              {forecastCone && (
+                <>
+                  <Line dataKey="forecastHigh" stroke="#8b5cf6" strokeOpacity={0.4} strokeDasharray="2 4" dot={false} activeDot={false} isAnimationActive={false} />
+                  <Line dataKey="forecastLow" stroke="#8b5cf6" strokeOpacity={0.4} strokeDasharray="2 4" dot={false} activeDot={false} isAnimationActive={false} />
+                </>
+              )}
               <Line
                 dataKey="forecast"
                 data-testid="forecast-line"
                 stroke="#8b5cf6"
                 strokeWidth={2}
                 strokeDasharray="5 4"
-                dot={false}
+                dot={{ r: 2.5, fill: '#8b5cf6', stroke: '#8b5cf6' }}
                 activeDot={{ r: 3 }}
                 isAnimationActive={false}
               />

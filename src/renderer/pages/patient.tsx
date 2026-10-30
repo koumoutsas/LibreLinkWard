@@ -20,6 +20,7 @@ export default function PatientPage() {
   const navigate = useNavigate();
   const unit = useAuthStore((s) => s.resultUnit);
   const showForecast = useAuthStore((s) => s.showForecast);
+  const showForecastCone = useAuthStore((s) => s.showForecastCone);
   const { patients } = usePatients();
   const { config } = useAlarmConfig(patientId);
   const [hours, setHours] = useState(6);
@@ -72,6 +73,7 @@ export default function PatientPage() {
               windowMs={hours * HOUR}
               height={380}
               forecast={showForecast}
+              forecastCone={showForecastCone}
             />
           </div>
         </>

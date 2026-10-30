@@ -247,6 +247,7 @@ describe('SettingsGeneralPage', () => {
     reload = jest.fn()
     Object.defineProperty(window, 'location', { configurable: true, value: { ...realLocation, reload } })
     useAlertStore.setState({ bringToFrontEnabled: false, flashWindowEnabled: false, audioAlertEnabled: false, useCustomSound: false })
+    useAuthStore.setState({ showForecast: false, showForecastCone: false })
   })
   afterEach(() => Object.defineProperty(window, 'location', { configurable: true, value: realLocation }))
 
@@ -283,6 +284,15 @@ describe('SettingsGeneralPage', () => {
     fireEvent.click(screen.getAllByRole('checkbox')[1])
     expect(useAuthStore.getState().showForecast).toBe(true)
     expect(ipc.ipcRenderer.sendMessage).toHaveBeenCalledWith('refresh-primary')
+  })
+
+  it('offers the forecast cone only while the forecast is on', () => {
+    open()
+    expect(screen.queryByText('Show forecast cone')).not.toBeInTheDocument()
+    fireEvent.click(screen.getAllByRole('checkbox')[1])
+    fireEvent.click(screen.getAllByRole('checkbox')[2])
+    expect(screen.getByText('Show forecast cone')).toBeInTheDocument()
+    expect(useAuthStore.getState().showForecastCone).toBe(true)
   })
 
   it('reveals the sound options as alerts are switched on', async () => {

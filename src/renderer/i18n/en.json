@@ -88,5 +88,7 @@
   "Apply Changes": "Apply Changes",
   "Show glucose values in tray": "System Tray",
   "Show AR2 forecast": "Show AR2 forecast",
+  "Show forecast cone": "Show forecast cone",
+  "FORECAST_CONE_DESCRIPTION": "Dotted upper and lower bounds around the forecast. They widen with time to show growing uncertainty; they are not a confidence interval.",
   "FORECAST_DESCRIPTION": "Dashed line on the patient graph (about 65 minutes ahead). A rough statistical estimate from the last two readings; do not use it for treatment decisions."
 }

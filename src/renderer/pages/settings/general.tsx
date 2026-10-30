@@ -32,6 +32,12 @@ export default function SettingsGeneralPage() {
 
   const showForecast = useAuthStore((state) => state.showForecast)
   const setShowForecast = useAuthStore((state) => state.setShowForecast)
+  const showForecastCone = useAuthStore((state) => state.showForecastCone)
+  const setShowForecastCone = useAuthStore((state) => state.setShowForecastCone)
+  const handleSetShowForecastCone = (value: boolean) => {
+    setShowForecastCone(value)
+    sendRefreshPrimaryWindow()
+  }
   const handleSetShowForecast = (value: boolean) => {
     setShowForecast(value)
     sendRefreshPrimaryWindow()
@@ -193,6 +199,16 @@ export default function SettingsGeneralPage() {
           </div>
           <p className="text-xs text-gray-500">{t('FORECAST_DESCRIPTION')}</p>
         </div>
+
+        {showForecast && (
+          <div className="flex flex-col gap-1">
+            <div className="flex flex-row justify-between gap-4">
+              <p className="text-gray-400">{t('Show forecast cone')}</p>
+              <ToggleSwitch checked={showForecastCone} onChange={handleSetShowForecastCone} />
+            </div>
+            <p className="text-xs text-gray-500">{t('FORECAST_CONE_DESCRIPTION')}</p>
+          </div>
+        )}
 
         <div className="text-gray-400">{t('ALERT_DESCRIPTION')}</div>
 
