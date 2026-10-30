@@ -3,10 +3,12 @@ import CryptoJS from 'crypto-js'
 import {
   Connection,
   Credentials,
+  GlucoseMeasurement,
   GraphResult,
   LinkUpError,
   Session,
 } from './types'
+import { normaliseMeasurement } from './timestamps'
 
 export type HttpFn = (config: AxiosRequestConfig) => Promise<AxiosResponse>
 
@@ -93,7 +95,8 @@ export class LinkUpClient {
 
   async getConnections(): Promise<Connection[]> {
     const res = await this.authed('/connections')
-    return res.data?.data ?? []
+    const connections: Connection[] = res.data?.data ?? []
+    return connections.map((c) => ({ ...c, glucoseMeasurement: normaliseMeasurement(c.glucoseMeasurement) }))
   }
 
   async getGraph(patientId: string): Promise<GraphResult> {
@@ -104,8 +107,8 @@ export class LinkUpClient {
     }
     return {
       connection: data.connection,
-      graphData: data.graphData ?? [],
-      glucoseMeasurement: data.connection.glucoseMeasurement,
+      graphData: ((data.graphData ?? []) as GlucoseMeasurement[]).map(normaliseMeasurement),
+      glucoseMeasurement: normaliseMeasurement(data.connection.glucoseMeasurement),
     }
   }
 

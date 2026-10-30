@@ -1,5 +1,5 @@
 import { Connection, GraphPoint, GraphResult, LinkUpError } from '../../shared/linkup'
-import { HISTORY_WINDOW_MS } from '../../shared/stores'
+import { HISTORY_WINDOW_MS, pointTime } from '../../shared/stores'
 import { NightscoutClient } from './client'
 
 /** Id of the single patient a Nightscout site provides. */
@@ -97,7 +97,7 @@ export class NightscoutSource {
     const graphData = raw
       .map(entryToPoint)
       .filter((p): p is GraphPoint => p !== null)
-      .sort((a, b) => Date.parse(a.Timestamp) - Date.parse(b.Timestamp))
+      .sort((a, b) => pointTime(a) - pointTime(b))
     return {
       connection: {
         patientId,

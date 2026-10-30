@@ -143,14 +143,9 @@ describe('pointTime', () => {
       else process.env.TZ = tz
     })
 
-    it('reads a zoneless ISO FactoryTimestamp as UTC', () => {
-      const ts = '2026-10-28T12:15:30'
-      expect(pointTime({ Timestamp: ts, FactoryTimestamp: ts, ValueInMgPerDl: 1 })).toBe(utc)
-    })
-
-    it('reads a zoneless "M/D/YYYY h:mm:ss PM" FactoryTimestamp as UTC', () => {
-      const ts = '10/28/2026 12:15:30 PM'
-      expect(pointTime({ Timestamp: ts, FactoryTimestamp: ts, ValueInMgPerDl: 1 })).toBe(utc)
+    it.each(['2026-10-28T12:15:30', '10/28/2026 12:15:30 PM'])('rejects a zoneless timestamp: %s', (ts) => {
+      expect(pointTime({ Timestamp: ts, FactoryTimestamp: ts, ValueInMgPerDl: 1 })).toBeNaN()
+      expect(pointTime({ Timestamp: ts, ValueInMgPerDl: 1 })).toBeNaN()
     })
   })
 })

@@ -1,4 +1,5 @@
 import { createStore } from 'zustand/vanilla'
+import { HAS_ZONE } from '../linkup/timestamps'
 import { Connection, GraphPoint, GraphResult } from '../linkup/types'
 
 export const HISTORY_WINDOW_MS = 12 * 60 * 60 * 1000
@@ -34,16 +35,13 @@ export type PatientStoreState = {
 const displayName = (c: Pick<Connection, 'firstName' | 'lastName' | 'patientId'>) =>
   [c.firstName, c.lastName].filter(Boolean).join(' ') || c.patientId
 
-/** Epoch ms of a reading; NaN when the timestamp cannot be parsed. */
-const HAS_ZONE = /(Z|[+-]\d{2}:?\d{2})$/i
-
-// LibreLinkUp's FactoryTimestamp is UTC but carries no zone ("10/28/2026 12:15:30 PM"),
-// so Date.parse would read it as local time and skew it by the UTC offset.
+/**
+ * Epoch ms of a reading; NaN when the timestamp cannot be parsed or has no explicit
+ * timezone (Z or an offset). A zoneless time is ambiguous, so it is never guessed at.
+ */
 export const pointTime = (p: GraphPoint): number => {
-  if (!p.FactoryTimestamp) return Date.parse(p.Timestamp)
-  const ts = p.FactoryTimestamp
-  if (HAS_ZONE.test(ts)) return Date.parse(ts)
-  return Date.parse(ts.includes('T') ? `${ts}Z` : `${ts} UTC`)
+  const ts = p.FactoryTimestamp ?? p.Timestamp
+  return HAS_ZONE.test(ts) ? Date.parse(ts) : NaN
 }
 
 export function mergeHistory(
