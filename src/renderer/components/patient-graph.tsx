@@ -6,7 +6,7 @@ import {
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
-  TooltipProps,
+  TooltipContentProps,
   XAxis,
   YAxis,
 } from 'recharts'
@@ -32,7 +32,9 @@ type Props = {
 const formatTime = (t: number) =>
   new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
-export function GraphTooltip({ active, payload, unit }: TooltipProps<number, string> & { unit: string }) {
+type GraphTooltipProps = Partial<Pick<TooltipContentProps<number, string>, 'active' | 'payload'>> & { unit: string }
+
+export function GraphTooltip({ active, payload, unit }: GraphTooltipProps) {
   const point = payload?.[0]?.payload as ChartPoint | undefined
   if (!active || !point) return null
   return (
