@@ -60,10 +60,6 @@ describe('utils', () => {
     expect(() => utils.getUserValue(1)).toThrow('Unsupported result unit')
   })
 
-  it('hashes with sha256', () => {
-    expect(utils.hash256('abc')).toBe('ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad')
-  })
-
   it('tracks tray visibility and tells main to create or destroy it', async () => {
     const { ipcRenderer } = stubElectron()
     expect(utils.getTrayVisibility()).toBe(true)

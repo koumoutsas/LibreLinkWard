@@ -1,5 +1,5 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios'
-import CryptoJS from 'crypto-js'
+import { createHash } from 'node:crypto'
 import {
   Connection,
   Credentials,
@@ -37,7 +37,7 @@ const normaliseCountry = (c: string): string => {
 }
 
 const hash256 = (s: string): string =>
-  CryptoJS.SHA256(s).toString(CryptoJS.enc.Hex)
+  createHash('sha256').update(s).digest('hex')
 
 export class LinkUpClient {
   private session?: Session
