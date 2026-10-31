@@ -1,5 +1,4 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios'
-import { createHash } from 'node:crypto'
 import {
   Connection,
   Credentials,
@@ -36,8 +35,11 @@ const normaliseCountry = (c: string): string => {
   return lower === 'ch' ? 'eu' : lower
 }
 
-const hash256 = (s: string): string =>
-  createHash('sha256').update(s).digest('hex')
+// WebCrypto: shared by the renderer and main, so no node:crypto or extra dependency.
+const hash256 = async (s: string): Promise<string> => {
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(s))
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('')
+}
 
 export class LinkUpClient {
   private session?: Session
@@ -126,7 +128,7 @@ export class LinkUpClient {
     }
   }
 
-  private get(url: string): Promise<AxiosResponse> {
+  private async get(url: string): Promise<AxiosResponse> {
     const s = this.session!
     return this.request({
       method: 'get',
@@ -135,7 +137,7 @@ export class LinkUpClient {
       headers: {
         ...HEADERS,
         Authorization: `Bearer ${s.token}`,
-        'Account-Id': hash256(s.accountId),
+        'Account-Id': await hash256(s.accountId),
       },
     })
   }
