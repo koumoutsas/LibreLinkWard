@@ -128,7 +128,7 @@ describe('LoginPage', () => {
     await pick(triggers[0], 'English')
     expect(useAuthStore.getState().language).toBe('en')
     await pick(screen.getAllByRole('combobox')[1], 'Germany')
-    fireEvent.click(screen.getAllByRole('button').find((b) => b.querySelector('svg') && !b.textContent)!)
+    fireEvent.click(screen.getAllByRole('button').find((b) => b.querySelector('svg') && !b.textContent && !b.getAttribute('aria-label'))!)
     expect(await screen.findByText(/Connected Apps/)).toBeInTheDocument()
   })
 })

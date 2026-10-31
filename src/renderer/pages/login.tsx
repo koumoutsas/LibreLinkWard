@@ -4,6 +4,7 @@ import { useTranslation, Trans } from "react-i18next"
 import { useForm } from "react-hook-form"
 import { useNavigate } from "react-router-dom"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { PasswordInput } from "@/components/ui/password-input"
 import { PublicLayout } from "@/layouts/public-layout"
 import {
   Form,
@@ -217,7 +218,7 @@ export default function LoginPage() {
                   <FormItem>
                     <FormLabel>{ t('Password') }</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder={ t('Password') } {...field} />
+                      <PasswordInput placeholder={ t('Password') } {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

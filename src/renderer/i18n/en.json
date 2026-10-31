@@ -53,6 +53,8 @@
 
   "Username": "Username",
   "Password": "Password",
+  "Show password": "Show password",
+  "Hide password": "Hide password",
   "Login": "Log in",
   "Country": "Country",
   "Language": "Language",

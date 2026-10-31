@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Input } from '@/components/ui/input';
 import { countries } from '@/config/app';
 
@@ -73,7 +74,7 @@ export function AddPatientForm({ onDone }: Props) {
       ) : (
         <>
           <Input placeholder="Patient username (email)" value={username} onChange={(e) => setUsername(e.target.value)} required />
-          <Input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          <PasswordInput placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required />
           <select
             aria-label="Country"
             value={country}
