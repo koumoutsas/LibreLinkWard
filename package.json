@@ -26,6 +26,7 @@
     "package:dir": "npm run build && electron-builder build --dir --publish never",
     "test:e2e": "playwright test",
     "test:e2e:local": "scripts/e2e-local.sh",
+    "screenshots": "cross-env TS_NODE_TRANSPILE_ONLY=true scripts/with-throwaway-keychain.sh ts-node scripts/screenshots.ts",
     "typecheck": "tsc --noEmit --skipLibCheck",
     "test:mutation": "stryker run",
     "deps:outdated": "npm outdated",

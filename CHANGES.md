@@ -8,7 +8,9 @@ LibreLinkWard is a fork of [LibreLinkUpDesktop](https://github.com/Crazy-Marvin/
 - Per-patient alarm engine (thresholds, hysteresis, snooze, signal loss) replacing the single global alert.
 - Credentials stored via Electron `safeStorage`.
 - Optional per-patient Nightscout uploader.
-- Unit, integration and e2e tests; CI on macOS/Windows/Linux; removed Snap/Flathub/Store packaging.
+- Nightscout as a reading source (read-only), alongside LibreLinkUp.
+- Optional AR2 forecast on the graphs and predictive alarms.
+- Unit, integration and e2e tests, mutation testing (Stryker) and a lint gate in CI (currently macOS only); Dependabot and a weekly dependency-health check; removed Snap/Flathub/Store packaging.
 - Docs: README, CONTRIBUTING, PRIVACY.
 
 Per-file history is available in the git log.
