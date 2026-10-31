@@ -39,7 +39,7 @@ export function sendRefreshPrimaryWindow() {
   window.electron.ipcRenderer.sendMessage('refresh-primary')
 }
 
-export function triggerWarningAlert(alertOptions: any){
+export function triggerWarningAlert(alertOptions: unknown){
   window.electron.ipcRenderer.sendMessage('trigger-warning-alerts', alertOptions)
 }
 

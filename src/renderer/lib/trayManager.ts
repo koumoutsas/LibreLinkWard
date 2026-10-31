@@ -5,7 +5,6 @@ import * as fs from 'fs';
 // Constants
 const MAX_DISPLAY_NUMBER = 999;
 const MIN_DISPLAY_NUMBER = 0;
-const TRAY_TEXT_FONT_PX = 16;
 const TRAY_TEXT_HEIGHT_PX = 22;
 // Drawn at 2x and tagged as 2x, so the size in points is exactly the constants above.
 const TRAY_TEXT_SCALE = 2;
@@ -51,16 +50,6 @@ interface TrayManagerState {
 }
 
 const TREND_TEXT: Record<number, string> = { 1: '↓', 2: '↘', 3: '→', 4: '↗', 5: '↑' };
-
-const TREND_ARROW_MAP: Record<number, string> = {
-  1: `<svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.14645 2.14645C7.34171 1.95118 7.65829 1.95118 7.85355 2.14645L11.8536 6.14645C12.0488 6.34171 12.0488 6.65829 11.8536 6.85355C11.6583 7.04882 11.3417 7.04882 11.1464 6.85355L8 3.70711L8 12.5C8 12.7761 7.77614 13 7.5 13C7.22386 13 7 12.7761 7 12.5L7 3.70711L3.85355 6.85355C3.65829 7.04882 3.34171 7.04882 3.14645 6.85355C2.95118 6.65829 2.95118 6.34171 3.14645 6.14645L7.14645 2.14645Z" fill="currentColor" fill-rule="evenodd" clip-rule="evenodd"></path></svg>`,
-  2: `<svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11.3536 3.64644C11.5488 3.8417 11.5488 4.15828 11.3536 4.35354L4.70711 11L9 11C9.27614 11 9.5 11.2239 9.5 11.5C9.5 11.7761 9.27614 12 9 12L3.5 12C3.36739 12 3.24021 11.9473 3.14645 11.8536C3.05268 11.7598 3 11.6326 3 11.5L3 5.99999C3 5.72385 3.22386 5.49999 3.5 5.49999C3.77614 5.49999 4 5.72385 4 5.99999V10.2929L10.6464 3.64643C10.8417 3.45117 11.1583 3.45117 11.3536 3.64644Z" fill="currentColor" fill-rule="evenodd" clip-rule="evenodd"></path></svg>`,
-  3: `<svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8.14645 3.14645C8.34171 2.95118 8.65829 2.95118 8.85355 3.14645L12.8536 7.14645C13.0488 7.34171 13.0488 7.65829 12.8536 7.85355L8.85355 11.8536C8.65829 12.0488 8.34171 12.0488 8.14645 11.8536C7.95118 11.6583 7.95118 11.3417 8.14645 11.1464L11.2929 8H2.5C2.22386 8 2 7.77614 2 7.5C2 7.22386 2.22386 7 2.5 7H11.2929L8.14645 3.85355C7.95118 3.65829 7.95118 3.34171 8.14645 3.14645Z" fill="currentColor" fill-rule="evenodd" clip-rule="evenodd"></path></svg>`,
-  4: `<svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3.64645 3.64644C3.45118 3.8417 3.45118 4.15828 3.64645 4.35354L10.2929 11L6 11C5.72386 11 5.5 11.2239 5.5 11.5C5.5 11.7761 5.72386 12 6 12L11.5 12C11.6326 12 11.7598 11.9473 11.8536 11.8536C11.9473 11.7598 12 11.6326 12 11.5L12 5.99999C12 5.72385 11.7761 5.49999 11.5 5.49999C11.2239 5.49999 11 5.72385 11 5.99999V10.2929L4.35355 3.64643C4.15829 3.45117 3.84171 3.45117 3.64645 3.64644Z" fill="currentColor" fill-rule="evenodd" clip-rule="evenodd"></path></svg>`,
-  5: `<svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.5 2C7.77614 2 8 2.22386 8 2.5L8 11.2929L11.1464 8.14645C11.3417 7.95118 11.6583 7.95118 11.8536 8.14645C12.0488 8.34171 12.0488 8.65829 11.8536 8.85355L7.85355 12.8536C7.75979 12.9473 7.63261 13 7.5 13C7.36739 13 7.24021 12.9473 7.14645 12.8536L3.14645 8.85355C2.95118 8.65829 2.95118 8.34171 3.14645 8.14645C3.34171 7.95118 3.65829 7.95118 3.85355 8.14645L7 11.2929L7 2.5C7 2.22386 7.22386 2 7.5 2Z" fill="currentColor" fill-rule="evenodd" clip-rule="evenodd"></path></svg>`,
-};
-
-const DEFAULT_ARROW_SVG = `<svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8.14645 3.14645C8.34171 2.95118 8.65829 2.95118 8.85355 3.14645L12.8536 7.14645C13.0488 7.34171 13.0488 7.65829 12.8536 7.85355L8.85355 11.8536C8.65829 12.0488 8.34171 12.0488 8.14645 11.8536C7.95118 11.6583 7.95118 11.3417 8.14645 11.1464L11.2929 8H2.5C2.22386 8 2 7.77614 2 7.5C2 7.22386 2.22386 7 2.5 7H11.2929L8.14645 3.85355C7.95118 3.65829 7.95118 3.34171 8.14645 3.14645Z" fill="currentColor" fill-rule="evenodd" clip-rule="evenodd"></path></svg>`;
 
 // Tray Manager Class
 class TrayManager {
@@ -368,7 +357,7 @@ class TrayManager {
           let iconPath: string | null = null;
 
           switch (process.platform) {
-            case 'darwin': // macOS
+            case 'darwin': { // macOS
               // Use 16x16 icon as the standard for macOS tray
               const macIconPath16 = path.join(assetsDir, 'tray-logo-16.png');
               const macIconPath16Retina = path.join(assetsDir, 'tray-logo-16@2x.png');
@@ -383,8 +372,9 @@ class TrayManager {
                 }
               }
               break;
+            }
 
-            default:
+            default: {
               // Use original tray-logo.png for Windows and Linux
               const originalIconPath = path.join(assetsDir, 'tray-logo.png');
               if (fs.existsSync(originalIconPath)) {
@@ -392,6 +382,7 @@ class TrayManager {
                 console.log('Found original icon:', originalIconPath);
               }
               break;
+            }
           }
 
           // If platform-specific icon found, use it
@@ -555,8 +546,7 @@ class TrayManager {
   }
 
   private getTooltipHTML(): string {
-    const { currentUnit, trendArrow, readings } = this.state;
-    const trendSvg = TREND_ARROW_MAP[trendArrow] || DEFAULT_ARROW_SVG;
+    const { currentUnit, readings } = this.state;
 
     const rows = readings.length
       ? readings
@@ -744,7 +734,7 @@ class TrayManager {
     return { r: 34, g: 197, b: 94, a: 255 }; // bg-green-500
   }
 
-  private getColorForGlucoseLevel(level: number): RGBAColor {
+  private getColorForGlucoseLevel(_level: number): RGBAColor {
     return { r: 255, g: 255, b: 255, a: 255 };
   }
 

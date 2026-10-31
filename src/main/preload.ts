@@ -13,6 +13,8 @@ const check = (channel: Channels) => {
 
 const electronHandler = {
   ipcRenderer: {
+    // IPC replies are untyped; call sites narrow them.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     invoke(channel: Channels, ...args: unknown[]): Promise<any> {
       check(channel)
       return ipcRenderer.invoke(channel, ...args);

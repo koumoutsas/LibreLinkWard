@@ -35,6 +35,7 @@ let mainWindow: BrowserWindow | null = null
 let isQuitting = false
 
 if (process.env.NODE_ENV === 'production') {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const sourceMapSupport = require('source-map-support')
   sourceMapSupport.install()
 }
@@ -113,7 +114,6 @@ const createWindow = async () => {
   })
 
   // Remove this if your app does not use auto updates
-  // eslint-disable-next-line
   // new AppUpdater()
 }
 

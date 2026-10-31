@@ -48,7 +48,7 @@ describe('utils', () => {
     expect(await utils.getRedirectTo()).toBe('/x')
     await utils.clearRedirectTo()
     expect(await utils.getRedirectTo()).toBeNull()
-    expect(utils.cn('a', false && 'b', 'p-1', 'p-2')).toBe('a p-2')
+    expect(utils.cn('a', false, 'p-1', 'p-2')).toBe('a p-2')
   })
 
   it('converts values to the display unit', () => {

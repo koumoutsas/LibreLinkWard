@@ -23,19 +23,9 @@ export default defineConfig([
     languageOptions: { globals: { ...globals.browser, ...globals.node } },
     rules: {
       'react-hooks/rules-of-hooks': 'error',
-      '@typescript-eslint/no-shadow': 'warn',
-      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', ignoreRestSiblings: true }],
-      '@typescript-eslint/no-explicit-any': 'warn',
-    },
-  },
-  {
-    // Existing violations surface as warnings until they are cleaned up.
-    rules: {
-      '@typescript-eslint/no-require-imports': 'warn',
-      '@typescript-eslint/no-empty-object-type': 'warn',
-      'no-case-declarations': 'warn',
-      'no-constant-binary-expression': 'warn',
-      'preserve-caught-error': 'warn',
+      '@typescript-eslint/no-shadow': 'error',
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', ignoreRestSiblings: true }],
+      '@typescript-eslint/no-explicit-any': 'error',
     },
   },
   {
@@ -46,5 +36,11 @@ export default defineConfig([
   {
     files: ['**/__tests__/**', '**/*.test.{ts,tsx}'],
     languageOptions: { globals: globals.jest },
+    rules: { '@typescript-eslint/no-explicit-any': 'off' },
+  },
+  {
+    // Webpack configs run under ts-node/CommonJS.
+    files: ['.erb/**'],
+    rules: { '@typescript-eslint/no-require-imports': 'off' },
   },
 ])

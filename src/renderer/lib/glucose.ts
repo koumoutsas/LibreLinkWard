@@ -1,4 +1,3 @@
-import type { AlarmConfig } from '../../shared/stores'
 import { pointTime } from '../../shared/stores'
 import { glucoseLevel } from '../../shared/alarms'
 import type { GlucoseLevel, Thresholds } from '../../shared/alarms'

@@ -2,7 +2,6 @@ import { Button } from '@/components/ui/button';
 import { BaseLayout } from '@/layouts/base-layout';
 import { cn } from '@/lib/utils';
 import {
-  ArrowLeftIcon,
   MixerVerticalIcon,
   PersonIcon,
 } from '@radix-ui/react-icons';
@@ -43,7 +42,6 @@ function SidebarButton({
 }
 
 export default function SettingsLayout({ children }: Props) {
-  const navigate = useNavigate();
   const { t } = useTranslation();
 
   return (

@@ -23,7 +23,7 @@ export class WindowStateManager {
   private readState(): WindowState {
     try {
       return JSON.parse(fs.readFileSync(this.stateFilePath, 'utf-8'));
-    } catch (error) {
+    } catch {
       return this.defaultState;
     }
   }

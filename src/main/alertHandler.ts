@@ -53,7 +53,7 @@ const uploadCustomAlertSoundFile = (fileData: Array<number>) => {
     return targetFilePath;
   } catch (error) {
     console.error('uploadCustomAlertSoundFile custom MP3 file:', error);
-    throw new Error('Failed to move custom MP3 file.');
+    throw new Error('Failed to move custom MP3 file.', { cause: error });
   }
 }
 

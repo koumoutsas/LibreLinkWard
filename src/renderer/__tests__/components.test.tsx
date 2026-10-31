@@ -181,7 +181,6 @@ it('renders the header transition', () => {
 })
 
 describe('PatientCard', () => {
-  const ts = new Date().toISOString()
   const base: any = { patientId: 'p', name: 'Alice', history: [], status: 'ok', lastUpdated: undefined }
   const show = (patient: any, alarms: any = undefined) => {
     stubElectron(async () => alarms)

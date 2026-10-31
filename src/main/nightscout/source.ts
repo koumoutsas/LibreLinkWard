@@ -17,7 +17,10 @@ const TRENDS: Record<string, number> = {
 }
 
 /** Null for anything that is not a usable sgv entry. */
-export function entryToPoint(raw: any): GraphPoint | null {
+type RawEntry = { date?: unknown; sgv?: unknown; direction?: string }
+
+export function entryToPoint(input: unknown): GraphPoint | null {
+  const raw = input as RawEntry | null | undefined
   const date = Number(raw?.date)
   const sgv = Number(raw?.sgv)
   if (!Number.isFinite(date) || !Number.isFinite(sgv) || sgv <= 0) return null
@@ -27,7 +30,7 @@ export function entryToPoint(raw: any): GraphPoint | null {
     FactoryTimestamp: iso,
     ValueInMgPerDl: sgv,
     Value: sgv,
-    TrendArrow: raw.direction ? TRENDS[raw.direction] : undefined,
+    TrendArrow: raw?.direction ? TRENDS[raw.direction] : undefined,
   }
 }
 
@@ -39,15 +42,18 @@ export type NightscoutSourceOptions = {
 
 const TARGET_REFRESH_MS = 60 * 60 * 1000
 
-const asLinkUpError = (e: any): LinkUpError => {
-  if (e instanceof LinkUpError) return e
+type HttpErrorLike = { response?: { status?: number }; message?: string }
+
+const asLinkUpError = (error: unknown): LinkUpError => {
+  if (error instanceof LinkUpError) return error
+  const e = error as HttpErrorLike | undefined
   const status: number | undefined = e?.response?.status
   const auth = status === 401 || status === 403
   const msg = auth
     ? 'Nightscout rejected the API secret'
     : status === 429
       ? 'Nightscout is rate limiting requests'
-      : e?.message ?? String(e)
+      : e?.message ?? String(error)
   return new LinkUpError(msg, auth ? 'auth' : status === 429 ? 'rate-limit' : 'network', status)
 }
 

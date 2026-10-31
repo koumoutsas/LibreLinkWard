@@ -145,7 +145,8 @@ export class LinkUpClient {
   private async request(config: AxiosRequestConfig): Promise<AxiosResponse> {
     try {
       return await this.http(config)
-    } catch (e: any) {
+    } catch (error) {
+      const e = error as { response?: { status?: number }; message?: string } | undefined
       const status: number | undefined = e?.response?.status
       if (status === 429) throw new LinkUpError('Rate limited', 'rate-limit', status)
       if (status === 401) throw new LinkUpError('Unauthorized', 'auth', status)

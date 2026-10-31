@@ -39,8 +39,12 @@ export type StoredAccount = LinkUpAccount | NightscoutAccount
 /** Id for a stored login without one (older files): the lower-cased username. */
 const legacyId = (username: string) => username.trim().toLowerCase()
 
-const valid = (a: any): a is StoredAccount =>
-  a?.kind === 'nightscout' ? !!a.url : !!(a?.username && a?.password && a?.country)
+type RawAccount = { kind?: string; url?: string; username?: string; password?: string; country?: string }
+
+const valid = (raw: unknown): raw is StoredAccount => {
+  const a = raw as RawAccount | null | undefined
+  return a?.kind === 'nightscout' ? !!a.url : !!(a?.username && a?.password && a?.country)
+}
 
 /**
  * LibreLinkUp credentials (any number of logins) encrypted with the OS

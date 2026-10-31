@@ -111,12 +111,12 @@ export async function startMockLibreLinkUp() {
   })
 
   /** HttpFn for LinkUpClient that sends every request to the mock instead of libreview.io. */
-  const http = (config: AxiosRequestConfig) => {
+  const httpFn = (config: AxiosRequestConfig) => {
     const path = new URL(config.baseURL ?? '').pathname
     return axios({ ...config, baseURL: `${url}${path}`, validateStatus: (s) => s >= 200 && s < 300 })
   }
 
-  return { state, url, http, stop: () => close(server) }
+  return { state, url, http: httpFn, stop: () => close(server) }
 }
 
 /** Fake Nightscout v1: entries + auth check. */

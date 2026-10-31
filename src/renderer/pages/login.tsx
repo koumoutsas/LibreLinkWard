@@ -28,7 +28,6 @@ import { useAuthStore } from "@/stores/auth"
 import { ButtonPopover } from "@/components/ui/button-popover"
 import { QuestionMarkIcon } from "@radix-ui/react-icons"
 import logo from "../../../assets/logo.png"
-import { useEffect } from 'react';
 import {
 } from '@/lib/utils';
 
@@ -102,7 +101,13 @@ export default function LoginPage() {
       else{
         toast.error("Unknown Error Occurred")
       }
-    } catch (error: any) {
+    } catch (err) {
+      const error = err as {
+        response?: { status?: number; statusText?: string }
+        request?: unknown
+        code?: string
+        message?: string
+      }
       console.error('Login error:', error);
 
       if (error.response) {

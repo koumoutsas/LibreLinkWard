@@ -18,13 +18,13 @@ export const registerTrayHandler = () => {
     }
   });
 
-  ipcMain.on('create-tray', (event) => {
+  ipcMain.on('create-tray', () => {
     if (mainWindow) {
       createTray(mainWindow);
     }
   });
 
-  ipcMain.on('destroy-tray', (event) => {
+  ipcMain.on('destroy-tray', () => {
     destroyTray();
   });
 };
