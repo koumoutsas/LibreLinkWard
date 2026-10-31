@@ -31,7 +31,7 @@ export function PatientCard({ patient, now: nowProp, onOpen }: Props) {
       onClick={() => onOpen(patient.patientId)}
       className="flex flex-col rounded-lg border text-left overflow-hidden hover:shadow-md transition-shadow"
     >
-      <div className={cn('flex items-center justify-between px-4 py-3 text-black', level ? LEVEL_CLASS[level] : 'bg-gray-500')}>
+      <div className={cn('flex items-center justify-between px-4 py-3 text-white', level ? LEVEL_CLASS[level] : 'bg-gray-500')}>
         <span className="font-semibold truncate">{patient.name}</span>
         <span className="flex items-center gap-2 text-2xl font-semibold">
           {stale ? '--' : formatGlucose(mgdl, unit)}
