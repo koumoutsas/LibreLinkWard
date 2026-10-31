@@ -10,12 +10,14 @@ import { PatientCard } from '../components/patient-card'
 import { PatientGraph } from '../components/patient-graph'
 import DashboardPage from '../pages/dashboard'
 import App from '../app'
+import { reloadApp } from '../lib/reload'
 import { useAlertStore } from '../stores/alertStore'
 import { useAuthStore } from '../stores/auth'
 import { AudioManager } from '../lib/AudioManager'
 import '../i18n/config'
 import { stubBrowser, stubElectron } from './helpers/electron'
 
+jest.mock('../lib/reload', () => ({ reloadApp: jest.fn() }))
 jest.mock('sonner', () => ({ toast: { error: jest.fn(), success: jest.fn() }, Toaster: () => null }))
 
 beforeAll(stubBrowser)
@@ -260,13 +262,9 @@ describe('Dashboard extras', () => {
 describe('App', () => {
   it('reloads on logout events, and routes signed-in users to the dashboard', async () => {
     const ipc = stubElectron(async (ch) => (ch === 'linkup:get-state' ? { status: 'running', patients: [] } : undefined))
-    const reload = jest.fn()
-    const real = window.location
-    Object.defineProperty(window, 'location', { configurable: true, value: { ...real, reload } })
     const { unmount } = render(<App />)
     act(() => ipc.emit('logout-event'))
-    expect(reload).toHaveBeenCalled()
+    expect(reloadApp).toHaveBeenCalled()
     unmount()
-    Object.defineProperty(window, 'location', { configurable: true, value: real })
   })
 })

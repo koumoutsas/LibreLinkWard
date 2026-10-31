@@ -7,6 +7,7 @@ import "@/custom.css"
 import "@/i18n/config"
 import { useEffect, useMemo } from "react"
 import { useTrayReadings } from "@/hooks/useTrayReadings"
+import { reloadApp } from "@/lib/reload"
 
 // Own component so patient updates re-render this, not the router below.
 function TrayReadings() {
@@ -20,7 +21,7 @@ export default function App() {
 
   useEffect(() => {
     const handleLogout = () => {
-      window.location.reload();
+      reloadApp();
     };
 
     const unsubscribe = window.electron.ipcRenderer.on('logout-event', handleLogout);

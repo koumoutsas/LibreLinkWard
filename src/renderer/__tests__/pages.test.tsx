@@ -8,6 +8,7 @@ import PatientPage from '../pages/patient'
 import SettingsAccountsPage from '../pages/settings/accounts'
 import SettingsGeneralPage from '../pages/settings/general'
 import { getAuthToken } from '../lib/linkup'
+import { reloadApp } from '../lib/reload'
 import { useAuthStore } from '../stores/auth'
 import { useAlertStore } from '../stores/alertStore'
 import '../i18n/config'
@@ -15,6 +16,7 @@ import { stubBrowser, stubElectron } from './helpers/electron'
 
 jest.mock('sonner', () => ({ toast: { error: jest.fn(), success: jest.fn() }, Toaster: () => null }))
 jest.mock('../lib/linkup', () => ({ getAuthToken: jest.fn() }))
+jest.mock('../lib/reload', () => ({ reloadApp: jest.fn() }))
 
 beforeAll(() => {
   stubBrowser()
@@ -249,16 +251,11 @@ describe('SettingsAccountsPage', () => {
 
 describe('SettingsGeneralPage', () => {
   let ipc: ReturnType<typeof stubElectron>
-  let reload: jest.Mock
-  const realLocation = window.location
   beforeEach(() => {
     ipc = stubElectron()
-    reload = jest.fn()
-    Object.defineProperty(window, 'location', { configurable: true, value: { ...realLocation, reload } })
     useAlertStore.setState({ bringToFrontEnabled: false, flashWindowEnabled: false, audioAlertEnabled: false, useCustomSound: false })
     useAuthStore.setState({ showForecast: false, showForecastCone: false })
   })
-  afterEach(() => Object.defineProperty(window, 'location', { configurable: true, value: realLocation }))
 
   const open = () => at('/settings/general', [['/settings/general', <SettingsGeneralPage />]])
 
@@ -273,7 +270,7 @@ describe('SettingsGeneralPage', () => {
     await pick(theme, 'Dark')
     expect(localStorage.getItem('vite-ui-theme')).toBe('dark')
     expect(localStorage.getItem('redirectTo')).toBe('/settings/general')
-    expect(reload).toHaveBeenCalled()
+    expect(reloadApp).toHaveBeenCalled()
     await pick(language, 'German')
     expect(useAuthStore.getState().language).toBe('de')
   })

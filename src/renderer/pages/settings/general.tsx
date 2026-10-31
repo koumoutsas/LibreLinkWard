@@ -16,6 +16,7 @@ import { countries, languages, themes, resultUnits } from "@/config/app"
 import { useTranslation } from "react-i18next"
 import { setRedirectTo, sendRefreshPrimaryWindow, getTrayVisibility, setTrayVisibility, uploadCustomAlertSoundFile } from "@/lib/utils"
 import { useAlertStore } from "@/stores/alertStore"
+import { reloadApp } from "@/lib/reload"
 import { useEffect, useState, useCallback  } from 'react';
 
 export default function SettingsGeneralPage() {
@@ -39,7 +40,7 @@ export default function SettingsGeneralPage() {
   const setAndRefreshTheme = (t: ThemeType) => {
     setTheme(t)
     setRedirectTo('/settings/general')
-    window.location.reload();
+    reloadApp()
   }
   const setAndRefreshLanguage = (l: string) => {
     i18n.changeLanguage(l)
