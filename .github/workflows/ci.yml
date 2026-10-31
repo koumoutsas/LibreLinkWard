@@ -35,13 +35,8 @@ jobs:
         run: npm install --prefer-offline --legacy-peer-deps
       - name: Typecheck
         run: npm run typecheck
-      # The inherited ESLint setup is still on eslintrc and reports many existing
-      # errors, so lint is advisory until it is cleaned up.
-      - name: Lint (advisory)
-        continue-on-error: true
+      - name: Lint
         run: npm run lint
-        env:
-          ESLINT_USE_FLAT_CONFIG: 'false'
       - name: Unit and integration tests with coverage gate
         run: npm run test:coverage
 
