@@ -10,3 +10,8 @@ Modifications to the original work are described in CHANGES.md.
 
 The original project builds on the libre-link-up-api-client by DiaKEM
 (https://github.com/DiaKEM/libre-link-up-api-client).
+
+The AR2 forecast algorithm and its constants originate from the Nightscout
+project (https://github.com/nightscout/cgm-remote-monitor, AGPL-3.0). This
+repository contains an independent implementation of the algorithm, not
+Nightscout source code.

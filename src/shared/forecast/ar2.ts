@@ -1,4 +1,5 @@
-// Port of Nightscout's AR2 forecast (cgm-remote-monitor, lib/plugins/ar2.js).
+// Implements the AR2 algorithm as used in Nightscout (cgm-remote-monitor, AGPL-3.0).
+// Written from the published equations, not copied from its source.
 // An early, crude statistical extrapolation: not for medical decisions.
 
 export type ForecastReading = { t: number; mgdl: number }
