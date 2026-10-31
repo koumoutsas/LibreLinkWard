@@ -1,4 +1,3 @@
-/* eslint global-require: off, no-console: off, promise/always-return: off */
 import path from "path"
 import { app, BrowserWindow, ipcMain, shell } from "electron"
 // import { autoUpdater } from "electron-updater"

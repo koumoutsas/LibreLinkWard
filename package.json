@@ -13,7 +13,7 @@
     "build:main": "cross-env NODE_ENV=production TS_NODE_TRANSPILE_ONLY=true webpack --config ./.erb/configs/webpack.config.main.prod.ts",
     "build:renderer": "cross-env NODE_ENV=production TS_NODE_TRANSPILE_ONLY=true webpack --config ./.erb/configs/webpack.config.renderer.prod.ts",
     "postinstall": "ts-node .erb/scripts/check-native-dep.js && electron-builder install-app-deps && cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true webpack --config ./.erb/configs/webpack.config.renderer.dev.dll.ts",
-    "lint": "cross-env NODE_ENV=development eslint . --ext .js,.jsx,.ts,.tsx",
+    "lint": "cross-env NODE_ENV=development eslint .",
     "package": "ts-node ./.erb/scripts/clean.js dist && npm run build && electron-builder build --publish never",
     "package-all": "ts-node ./.erb/scripts/clean.js dist && npm run build && electron-builder build -mwl --publish never",
     "rebuild": "electron-rebuild --parallel --types prod,dev,optional --module-dir release/app",
@@ -37,8 +37,7 @@
     "overrides": [
       {
         "files": [
-          ".prettierrc",
-          ".eslintrc"
+          ".prettierrc"
         ],
         "options": {
           "parser": "json"
@@ -139,6 +138,7 @@
     "@electron/notarize": "^2.5.0",
     "@electron/packager": "^20.3.0",
     "@electron/rebuild": "^4.2.1",
+    "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.64.1",
     "@pmmmwh/react-refresh-webpack-plugin": "^0.5.15",
     "@stryker-mutator/core": "^10.1.1",
@@ -154,8 +154,6 @@
     "@types/react-dom": "^18.3.5",
     "@types/react-test-renderer": "^18.3.1",
     "@types/webpack-bundle-analyzer": "^4.7.0",
-    "@typescript-eslint/eslint-plugin": "^8.21.0",
-    "@typescript-eslint/parser": "^8.21.0",
     "autoprefixer": "^10.4.20",
     "browserslist-config-erb": "^0.0.3",
     "chalk": "4.1.2",
@@ -169,19 +167,10 @@
     "electron-builder": "^26.15.3",
     "electron-devtools-installer": "^4.0.0",
     "electronmon": "^2.0.3",
-    "eslint": "^9.18.0",
-    "eslint-config-airbnb-base": "^15.0.0",
-    "eslint-config-erb": "^4.1.0",
-    "eslint-import-resolver-typescript": "^3.7.0",
-    "eslint-import-resolver-webpack": "^0.13.10",
-    "eslint-plugin-compat": "^6.0.2",
-    "eslint-plugin-import": "^2.31.0",
-    "eslint-plugin-jest": "^28.11.0",
-    "eslint-plugin-jsx-a11y": "^6.10.2",
-    "eslint-plugin-promise": "^7.2.1",
-    "eslint-plugin-react": "^7.37.4",
-    "eslint-plugin-react-hooks": "^4.6.2",
+    "eslint": "^10.14.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "file-loader": "^6.2.0",
+    "globals": "^17.13.0",
     "html-webpack-plugin": "^5.6.3",
     "identity-obj-proxy": "^3.0.0",
     "jest": "^30.5.2",
@@ -203,6 +192,7 @@
     "ts-node": "^10.9.2",
     "tsconfig-paths-webpack-plugin": "^4.2.0",
     "typescript": "^5.7.3",
+    "typescript-eslint": "^8.72.1",
     "url-loader": "^4.1.1",
     "webpack": "^5.97.1",
     "webpack-bundle-analyzer": "^4.10.2",

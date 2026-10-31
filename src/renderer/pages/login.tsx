@@ -32,16 +32,16 @@ import { useEffect } from 'react';
 import {
 } from '@/lib/utils';
 
-const field = z
+const requiredText = z
   .string()
   .min(2, 'Must be at least 2 characters')
   .max(50, 'Must be at most 50 characters')
 
 const formSchema = z.object({
-  username: field,
-  password: field,
-  country: field,
-  language: field,
+  username: requiredText,
+  password: requiredText,
+  country: requiredText,
+  language: requiredText,
 })
 
 export default function LoginPage() {
