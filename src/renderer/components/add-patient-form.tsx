@@ -63,8 +63,7 @@ export function AddPatientForm({ onDone }: Props) {
       {source === 'nightscout' ? (
         <>
           <Input placeholder="https://my-site.example.com" value={url} onChange={(e) => setUrl(e.target.value)} required />
-          <Input
-            type="password"
+          <PasswordInput
             placeholder="API secret (blank if public)"
             value={secret}
             onChange={(e) => setSecret(e.target.value)}
