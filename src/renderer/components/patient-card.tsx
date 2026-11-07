@@ -1,3 +1,4 @@
+import { useForecastSettings } from '@/stores/forecast'
 import type { PatientState } from '../../shared/stores'
 import { TrendArrow } from '@/components/ui/trend-arrow'
 import { PatientGraph } from '@/components/patient-graph'
@@ -16,9 +17,8 @@ export function PatientCard({ patient, now: nowProp, onOpen }: Props) {
   const ticking = useNow()
   const now = nowProp ?? ticking
   const unit = useAuthStore((s) => s.resultUnit)
-  const showForecast = useAuthStore((s) => s.showForecast)
-  const showForecastCone = useAuthStore((s) => s.showForecastCone)
   const { config } = useAlarmConfig(patient.patientId)
+  const { showForecast, showForecastCone } = useForecastSettings(patient.patientId)
   const mgdl = patient.latest?.ValueInMgPerDl
   const stale = isStale(patient.latest, patient.lastUpdated, config?.signalLossMinutes ?? DEFAULT_SIGNAL_LOSS_MINUTES, now)
   const level = mgdl !== undefined && config && !stale ? glucoseLevel(mgdl, config) : undefined

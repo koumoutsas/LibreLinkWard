@@ -251,9 +251,11 @@ describe('SettingsGeneralPage', () => {
     open()
     expect(screen.queryByText('Show forecast cone')).not.toBeInTheDocument()
     fireEvent.click(screen.getAllByRole('checkbox')[1])
-    fireEvent.click(screen.getAllByRole('checkbox')[2])
     expect(screen.getByText('Show forecast cone')).toBeInTheDocument()
+    // Enabling the forecast switches the cone on; the user can then turn it off.
     expect(useAuthStore.getState().showForecastCone).toBe(true)
+    fireEvent.click(screen.getAllByRole('checkbox')[2])
+    expect(useAuthStore.getState().showForecastCone).toBe(false)
   })
 
   it('reveals the sound options as alerts are switched on', async () => {

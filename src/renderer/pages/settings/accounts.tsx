@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { PatientAlarms } from '@/components/patient-alarms';
 import { NightscoutSettings } from '@/components/nightscout-settings';
 import { NightscoutSiteSettings } from '@/components/nightscout-site-settings';
+import { PatientForecastSettings } from '@/components/patient-forecast-settings';
 import { usePatients } from '@/hooks/usePatients';
 import { useTranslation } from 'react-i18next';
 
@@ -49,6 +50,7 @@ export default function SettingsAccountsPage() {
                     <h4 className={nightscout ? 'font-semibold' : 'text-gray-400'}>{t('Alerts')}</h4>
                     <PatientAlarms patientId={p.patientId} />
                   </div>
+                  <PatientForecastSettings patientId={p.patientId} />
                   {!nightscout && <NightscoutSettings patientId={p.patientId} />}
                 </div>
               ))}

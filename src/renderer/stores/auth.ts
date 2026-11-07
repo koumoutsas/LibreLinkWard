@@ -21,11 +21,11 @@ const useAuthStore = create<AuthStore>()(
       language: null,
       resultUnit: 'mg/dL',
       showForecast: false,
-      showForecastCone: false,
+      showForecastCone: true,
       setCountry: (value) => set(() => ({ country: value })),
       setLanguage: (value) => set(() => ({ language: value })),
       setResultUnit: (value) => set(() => ({ resultUnit: value })),
-      setShowForecast: (value) => set(() => ({ showForecast: value })),
+      setShowForecast: (value) => set((s) => ({ showForecast: value, showForecastCone: value ? true : s.showForecastCone })),
       setShowForecastCone: (value) => set(() => ({ showForecastCone: value })),
     }), {
       name: 'auth-storage',

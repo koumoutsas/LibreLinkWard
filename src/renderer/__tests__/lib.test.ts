@@ -291,3 +291,14 @@ describe('hooks', () => {
     })
   })
 })
+
+describe('per-patient forecast overrides', () => {
+  it('enabling a patient forecast turns its cone on; clearing falls back to global', async () => {
+    const { useForecastStore } = await import('../stores/forecast')
+    useForecastStore.getState().setForecast('p1', true)
+    expect(useForecastStore.getState().overrides.p1).toEqual({ showForecast: true, showForecastCone: true })
+    useForecastStore.getState().setCone('p1', false)
+    useForecastStore.getState().setForecast('p1', undefined)
+    expect(useForecastStore.getState().overrides.p1).toEqual({ showForecastCone: false })
+  })
+})
