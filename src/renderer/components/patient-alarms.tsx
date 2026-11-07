@@ -5,6 +5,9 @@ import { ToggleSwitch } from '@/components/ui/toggle-switch';
 import { useAlarmConfig } from '@/hooks/useAlarmConfig';
 import { useAuthStore } from '@/stores/auth';
 import { fromUnit, toUnit } from '@/lib/glucose';
+import { ForecastChoices, toChoice, fromChoice, type Choice } from '@/components/patient-forecast-settings';
+import { useForecastStore } from '@/stores/forecast';
+import { sendRefreshPrimaryWindow } from '@/lib/utils';
 import type { AlarmConfig } from '../../shared/stores';
 
 const FIELDS = [
@@ -19,9 +22,13 @@ type Draft = {
   sound: boolean;
   predictive: boolean;
   signalLossMinutes: string;
+  forecast: Choice;
+  cone: Choice;
 } & Record<(typeof FIELDS)[number][0], string>;
 
-const toDraft = (config: AlarmConfig, unit: string): Draft => ({
+const toDraft = (config: AlarmConfig, unit: string, forecast: Choice, cone: Choice): Draft => ({
+  forecast,
+  cone,
   enabled: config.enabled,
   sound: config.sound,
   predictive: config.predictive,
@@ -36,12 +43,15 @@ const toDraft = (config: AlarmConfig, unit: string): Draft => ({
 export function PatientAlarms({ patientId }: { patientId: string }) {
   const unit = useAuthStore((s) => s.resultUnit);
   const { config, update } = useAlarmConfig(patientId);
+  const override = useForecastStore((s) => s.overrides[patientId]);
+  const setOverride = useForecastStore((s) => s.setOverride);
 
   // Edits stay in the draft until Save is pressed.
   const [draft, setDraft] = useState<Draft>();
   const [error, setError] = useState<string>();
   const [saved, setSaved] = useState(false);
-  const current = config ? toDraft(config, unit) : undefined;
+  const [resetDone, setResetDone] = useState(false);
+  const current = config ? toDraft(config, unit, toChoice(override?.showForecast), toChoice(override?.showForecastCone)) : undefined;
   useEffect(() => {
     setDraft(current);
   }, [JSON.stringify(current)]);
@@ -50,6 +60,7 @@ export function PatientAlarms({ patientId }: { patientId: string }) {
     setDraft((d) => d && { ...d, ...patch });
     setError(undefined);
     setSaved(false);
+    setResetDone(false);
   };
 
   const save = async () => {
@@ -70,6 +81,11 @@ export function PatientAlarms({ patientId }: { patientId: string }) {
       patch.signalLossMinutes = v;
     }
     await update(patch);
+    if (draft.forecast !== current.forecast || draft.cone !== current.cone) {
+      setOverride(patientId, { showForecast: fromChoice(draft.forecast), showForecastCone: fromChoice(draft.cone) });
+      // The dashboard lives in another window and reads these from storage on load.
+      sendRefreshPrimaryWindow();
+    }
     setSaved(true);
   };
 
@@ -94,6 +110,12 @@ export function PatientAlarms({ patientId }: { patientId: string }) {
               Silent notification when the AR2 forecast leaves the low/high range within 30 minutes. A rough estimate: do not use it for treatment decisions.
             </p>
           </div>
+          <ForecastChoices
+            forecast={draft.forecast}
+            cone={draft.cone}
+            onForecast={(forecast) => edit(forecast === 'on' ? { forecast, cone: 'on' } : { forecast })}
+            onCone={(cone) => edit({ cone })}
+          />
           <div className="grid grid-cols-2 gap-4">
             {FIELDS.map(([key, label]) => (
               <div key={key}>
@@ -126,9 +148,18 @@ export function PatientAlarms({ patientId }: { patientId: string }) {
             {error && <p className="text-sm text-red-500">{error}</p>}
             {saved && !dirty && <p className="text-sm text-muted-foreground">Saved</p>}
           </div>
-          <Button variant="ghost" onClick={() => window.electron.ipcRenderer.invoke('alarms:reset', patientId)}>
-            Reset to sensor defaults
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              onClick={async () => {
+                await window.electron.ipcRenderer.invoke('alarms:reset', patientId);
+                setResetDone(true);
+              }}
+            >
+              Reset to sensor defaults
+            </Button>
+            {resetDone && <p className="text-sm text-muted-foreground">Alarm settings reset: thresholds follow the sensor's target range, alarms off</p>}
+          </div>
         </>
       )}
     </div>

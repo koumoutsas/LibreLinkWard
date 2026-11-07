@@ -1,17 +1,17 @@
 import { useTranslation } from 'react-i18next'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useForecastSettings, useForecastStore } from '@/stores/forecast'
 
-const toValue = (v?: boolean) => (v === undefined ? 'global' : v ? 'on' : 'off')
-const fromValue = (v: string) => (v === 'global' ? undefined : v === 'on')
+export type Choice = 'global' | 'on' | 'off'
+export const toChoice = (v?: boolean): Choice => (v === undefined ? 'global' : v ? 'on' : 'off')
+export const fromChoice = (v: Choice) => (v === 'global' ? undefined : v === 'on')
 
-function Choice({ label, value, onChange }: { label: string; value?: boolean; onChange: (v?: boolean) => void }) {
+function ChoiceSelect({ label, value, onChange }: { label: string; value: Choice; onChange: (v: Choice) => void }) {
   const { t } = useTranslation()
   return (
     <div className="flex flex-row items-center justify-between gap-4">
       <p className="text-gray-400">{label}</p>
-      <Select value={toValue(value)} onValueChange={(v) => onChange(fromValue(v))}>
-        <SelectTrigger className="w-[180px]">
+      <Select value={value} onValueChange={(v) => onChange(v as Choice)}>
+        <SelectTrigger className="w-[180px]" aria-label={label}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -24,19 +24,16 @@ function Choice({ label, value, onChange }: { label: string; value?: boolean; on
   )
 }
 
-/** Per-patient override of the global AR2 forecast and cone settings. */
-export function PatientForecastSettings({ patientId }: { patientId: string }) {
+type Props = { forecast: Choice; cone: Choice; onForecast: (v: Choice) => void; onCone: (v: Choice) => void }
+
+/** Per-patient forecast overrides. Saved together with the alarm settings. */
+export function ForecastChoices({ forecast, cone, onForecast, onCone }: Props) {
   const { t } = useTranslation()
-  const { showForecast, override } = useForecastSettings(patientId)
-  const setForecast = useForecastStore((s) => s.setForecast)
-  const setCone = useForecastStore((s) => s.setCone)
   return (
-    <div className="space-y-4" data-testid={`forecast-settings-${patientId}`}>
+    <div className="space-y-4" data-testid="forecast-settings">
       <h4 className="text-gray-400">{t('Forecast')}</h4>
-      <Choice label={t('Show AR2 forecast')} value={override?.showForecast} onChange={(v) => setForecast(patientId, v)} />
-      {showForecast && (
-        <Choice label={t('Show forecast cone')} value={override?.showForecastCone} onChange={(v) => setCone(patientId, v)} />
-      )}
+      <ChoiceSelect label={t('Show AR2 forecast')} value={forecast} onChange={onForecast} />
+      <ChoiceSelect label={t('Show forecast cone')} value={cone} onChange={onCone} />
     </div>
   )
 }
