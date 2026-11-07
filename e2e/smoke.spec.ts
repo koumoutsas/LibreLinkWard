@@ -1,13 +1,14 @@
 import { expect, test } from '@playwright/test'
 import { launchApp } from './helpers'
 
-test('app launches and shows the login screen when signed out', async () => {
+test('app launches and shows the language picker on first run', async () => {
   const { app, cleanup } = await launchApp()
   try {
     const window = await app.firstWindow()
     await window.waitForLoadState('domcontentloaded')
-    await expect(window.locator('input[type="password"]')).toBeVisible({ timeout: 20_000 })
-    await expect(window.locator('button[type="submit"]')).toBeVisible()
+    await expect(window.getByRole('radio', { name: 'English' })).toHaveAttribute('aria-checked', 'true', { timeout: 20_000 })
+    await window.getByRole('button', { name: 'Continue' }).click()
+    await expect(window.getByText('Add patient')).toBeVisible()
   } finally {
     await cleanup()
   }

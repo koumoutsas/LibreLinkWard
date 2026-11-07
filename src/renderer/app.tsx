@@ -16,8 +16,9 @@ function TrayReadings() {
 }
 
 export default function App() {
-  const token = useAuthStore((state) => state.token)
-  const router = useMemo(() => routes(!!token), [token])
+  // Readings sources are added from the dashboard; the only gate is the first-run language choice.
+  const language = useAuthStore((state) => state.language)
+  const router = useMemo(() => routes(!!language), [language])
 
   useEffect(() => {
     const handleLogout = () => {

@@ -239,7 +239,7 @@ describe('Dashboard extras', () => {
   it('shows a loading screen first, then the signed-out message', async () => {
     state({ status: 'signed-out', patients: [] })
     show()
-    expect(await screen.findByText('Not signed in.')).toBeInTheDocument()
+    expect(await screen.findByText(/No patients yet/)).toBeInTheDocument()
   })
 
   it('opens settings in a new window and marks failed sign-ins', async () => {

@@ -57,79 +57,35 @@ beforeEach(() => {
   useAuthStore.setState({ token: null, resultUnit: 'mg/dL', language: 'en', country: 'global' })
 })
 
-describe('LoginPage', () => {
-  const fill = async (u = 'user', p = 'secret') => {
-    await pick(screen.getAllByRole('combobox')[0], 'English')
-    fireEvent.change(screen.getByPlaceholderText('Username'), { target: { value: u } })
-    fireEvent.change(screen.getByPlaceholderText('Password'), { target: { value: p } })
-    fireEvent.click(document.querySelector<HTMLButtonElement>('button[type=submit]')!)
-  }
-  let ipc: ReturnType<typeof stubElectron>
-  beforeEach(() => {
-    ipc = stubElectron()
-    jest.spyOn(console, 'error').mockImplementation(() => {})
-    jest.spyOn(console, 'log').mockImplementation(() => {})
-  })
-  afterEach(() => jest.restoreAllMocks())
+describe('LoginPage (language picker)', () => {
+  const english = () => screen.getByTestId('language-en')
 
-  it('validates required fields', async () => {
-    at('/login', [['/login', <LoginPage />]])
-    fireEvent.click(document.querySelector<HTMLButtonElement>('button[type=submit]')!)
-    await waitFor(() => expect(screen.getAllByText(/at least 2/i).length).toBeGreaterThan(0))
-    expect(getAuthToken).not.toHaveBeenCalled()
-  })
-
-  it('signs in, hands the credentials to main and opens the dashboard', async () => {
-    ;(getAuthToken as jest.Mock).mockResolvedValue({ token: 'tok', accountId: 'acc', accountCountry: 'eu' })
+  it('preselects English but waits for the user to continue', () => {
+    useAuthStore.setState({ language: null, country: null })
     at('/login', [['/login', <LoginPage />], ['/dashboard', <p>dash</p>]])
-    await fill()
-    await screen.findByText('dash')
-    expect(useAuthStore.getState()).toMatchObject({ token: 'tok', accountId: 'acc', country: 'eu' })
-    expect(ipc.ipcRenderer.invoke).toHaveBeenCalledWith('linkup:sign-in', { country: 'eu', username: 'user', password: 'secret' })
+    expect(english()).toHaveAttribute('aria-checked', 'true')
+    expect(screen.queryByPlaceholderText('Password')).not.toBeInTheDocument()
+    expect(useAuthStore.getState().language).toBeNull()
+    expect(screen.queryByText('dash')).not.toBeInTheDocument()
   })
 
-  it('falls back to the chosen country and empty ids when the answer omits them', async () => {
-    ;(getAuthToken as jest.Mock).mockResolvedValue({})
+  it('stores the chosen language and opens the dashboard', async () => {
+    useAuthStore.setState({ language: null, country: null })
     at('/login', [['/login', <LoginPage />], ['/dashboard', <p>dash</p>]])
-    await fill()
+    fireEvent.click(screen.getByTestId('language-de'))
+    expect(screen.getByTestId('language-de')).toHaveAttribute('aria-checked', 'true')
+    expect(english()).toHaveAttribute('aria-checked', 'false')
+    fireEvent.click(screen.getByRole('button', { name: /continue|weiter/i }))
     await screen.findByText('dash')
-    expect(useAuthStore.getState()).toMatchObject({ token: '', accountId: '', country: 'global' })
+    expect(useAuthStore.getState()).toMatchObject({ language: 'de', country: 'global' })
   })
 
-  it.each([
-    [{ error: 4 }, 'Privacy policy error'],
-    [{ error: 2 }, 'Invalid credentials - Please check your username and password.'],
-    [{ error: 9 }, 'Authentication failed'],
-    [null, 'Unknown Error Occurred'],
-  ])('reports %p', async (answer, message) => {
-    ;(getAuthToken as jest.Mock).mockResolvedValue(answer)
-    at('/login', [['/login', <LoginPage />]])
-    await fill()
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith(message))
-  })
-
-  it.each([
-    [{ response: { status: 500, statusText: 'Oops' } }, 'Server error (500): Oops'],
-    [{ response: { status: 502 } }, 'Server error (502): Unknown error'],
-    [{ request: {} }, 'Unable to connect to server. Please check your internet connection.'],
-    [{ code: 'ECONNABORTED' }, 'Request timeout. Please try again.'],
-    [{ message: 'Network Error' }, 'Network error. Please check your internet connection.'],
-    [{ message: 'weird' }, 'An unexpected error occurred. Please try again.'],
-  ])('maps the failure %p to a toast', async (err, message) => {
-    ;(getAuthToken as jest.Mock).mockRejectedValue(err)
-    at('/login', [['/login', <LoginPage />]])
-    await fill()
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith(message))
-  })
-
-  it('stores the language chosen in the dropdown and the credentials hint opens', async () => {
-    at('/login', [['/login', <LoginPage />]])
-    const triggers = screen.getAllByRole('combobox')
-    await pick(triggers[0], 'English')
-    expect(useAuthStore.getState().language).toBe('en')
-    await pick(screen.getAllByRole('combobox')[1], 'Germany')
-    fireEvent.click(screen.getAllByRole('button').find((b) => b.querySelector('svg') && !b.textContent && !b.getAttribute('aria-label'))!)
-    expect(await screen.findByText(/Connected Apps/)).toBeInTheDocument()
+  it('keeps an existing country', async () => {
+    useAuthStore.setState({ language: null, country: 'eu' })
+    at('/login', [['/login', <LoginPage />], ['/dashboard', <p>dash</p>]])
+    fireEvent.click(screen.getByRole('button', { name: /continue/i }))
+    await screen.findByText('dash')
+    expect(useAuthStore.getState()).toMatchObject({ language: 'en', country: 'eu' })
   })
 })
 

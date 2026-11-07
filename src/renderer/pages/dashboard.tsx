@@ -54,9 +54,9 @@ export default function DashboardPage() {
       <AlarmNotifier />
       {patients.length === 0 ? (
         <p className="text-muted-foreground" data-testid="no-patients">
-          {status === 'signed-out'
-            ? 'Not signed in.'
-            : 'No patients are shared with this LibreLinkUp account yet.'}
+          {status === 'signed-out' || accounts.length === 0
+            ? 'No patients yet. Use “Add patient” to connect a LibreLinkUp login or a Nightscout site.'
+            : 'No patients are shared with your accounts yet.'}
         </p>
       ) : (
         <div className="flex flex-col gap-6">
