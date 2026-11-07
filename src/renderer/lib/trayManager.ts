@@ -1,4 +1,4 @@
-import { Tray, Menu, nativeImage, BrowserWindow, app } from 'electron';
+import { Tray, Menu, nativeImage, BrowserWindow, Notification, app, screen } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -9,6 +9,10 @@ const TRAY_TEXT_HEIGHT_PX = 22;
 // Drawn at 2x and tagged as 2x, so the size in points is exactly the constants above.
 const TRAY_TEXT_SCALE = 2;
 const LINUX_TRAY_SIZE_PX = 32;
+// Windows tray icons are 16 DIP; the bitmap is scaled by the display scale factor.
+const WIN_TRAY_SIZE_PX = 16;
+// Fixed id so Windows remembers whether the user pinned the icon (needs a signed build; falls back without it).
+const WIN_TRAY_GUID = '6f1c2d4e-8a3b-4c5d-9e7f-1a2b3c4d5e6f';
 const TOOLTIP_ROW_HEIGHT = 28;
 const TOOLTIP_PADDING = 12;
 
@@ -245,9 +249,9 @@ class TrayManager {
     }
   }
 
-  /** macOS and Linux draw the readings as an image; Linux trays (KDE's StatusNotifier) ignore setTitle. */
+  /** macOS, Linux and Windows draw the readings as an image; Linux trays (KDE's StatusNotifier) and Windows ignore setTitle. */
   private rendersTextImage(): boolean {
-    return process.platform === 'darwin' || process.platform === 'linux';
+    return process.platform === 'darwin' || process.platform === 'linux' || process.platform === 'win32';
   }
 
   /** On macOS the readings are shown as text alone; the icon is only used when there is no text. */
@@ -259,7 +263,7 @@ class TrayManager {
 
   /** Draws the readings as text in a hidden window. macOS: black on one pill per value, coloured by glucose level. Linux: black on a pill coloured by glucose level, readable on any panel theme. */
   private async renderTextImage(text: string): Promise<Electron.NativeImage> {
-    if (process.platform === 'linux') return this.renderSquareImage(text);
+    if (process.platform === 'linux' || process.platform === 'win32') return this.renderSquareImage(text);
     const win = new BrowserWindow({
       show: false,
       frame: false,
@@ -294,10 +298,14 @@ class TrayManager {
    * One patient: the value over its arrow; several: lowest over highest.
    */
   private async renderSquareImage(text: string): Promise<Electron.NativeImage> {
-    const size = LINUX_TRAY_SIZE_PX * TRAY_TEXT_SCALE;
+    const win32 = process.platform === 'win32';
+    const scale = win32 ? Math.max(1, Math.ceil(screen.getPrimaryDisplay().scaleFactor)) : TRAY_TEXT_SCALE;
+    const size = (win32 ? WIN_TRAY_SIZE_PX : LINUX_TRAY_SIZE_PX) * scale;
     const arrows = Object.values(TREND_TEXT);
     const last = text.slice(-1);
-    const lines = text.includes('–') ? text.split('–') : arrows.includes(last) ? [text.slice(0, -1), last] : [text];
+    let lines = text.includes('–') ? text.split('–') : arrows.includes(last) ? [text.slice(0, -1), last] : [text];
+    // 16px is too small for stacked text: show only the value (the lowest with several patients); the tooltip has the rest.
+    if (win32) lines = [lines[0]];
     const win = new BrowserWindow({
       show: false,
       frame: false,
@@ -310,7 +318,7 @@ class TrayManager {
       const color = this.rgbToCss(this.getBackgroundColorForGlucoseLevel(this.state.currentNumber));
       const lineHeight = size / lines.length;
       const html = `<body style="margin:0;background:transparent;overflow:hidden"><div id="b" style="width:${size}px;height:${size}px;`
-        + `box-sizing:border-box;background:${color};border-radius:${4 * TRAY_TEXT_SCALE}px;display:flex;flex-direction:column;`
+        + `box-sizing:border-box;background:${color};border-radius:${4 * scale}px;display:flex;flex-direction:column;`
         + `align-items:center;justify-content:center;color:#000;font:700 ${lineHeight}px/${lineHeight}px sans-serif;`
         + `font-variant-numeric:tabular-nums;white-space:nowrap">${lines.map((l) => `<div class="l">${this.escapeHtml(l)}</div>`).join('')}</div></body>`;
       await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
@@ -320,7 +328,7 @@ class TrayManager {
       );
       await new Promise((resolve) => setTimeout(resolve, 50));
       const captured = await win.webContents.capturePage({ x: 0, y: 0, width: size, height: size });
-      return nativeImage.createFromBuffer(captured.toPNG(), { scaleFactor: TRAY_TEXT_SCALE });
+      return nativeImage.createFromBuffer(captured.toPNG(), { scaleFactor: scale });
     } finally {
       win.destroy();
     }
@@ -457,13 +465,41 @@ class TrayManager {
 
   private createTrayInstance(icon: Electron.NativeImage): void {
     try {
-      this.state.tray = new Tray(icon);
+      this.state.tray = this.newTray(icon);
       this.setupTrayEventListeners();
+      this.showWindowsPinHint();
       this.updateTrayContextMenu();
       this.state.isCreated = true;
     } catch (error) {
       console.error('Failed to create tray instance:', error);
       this.state.isCreated = false;
+    }
+  }
+
+  private newTray(icon: Electron.NativeImage): Tray {
+    if (process.platform === 'win32') {
+      try {
+        return new Tray(icon, WIN_TRAY_GUID);
+      } catch (error) {
+        console.warn('Tray GUID rejected (unsigned build?), creating without it:', error);
+      }
+    }
+    return new Tray(icon);
+  }
+
+  /** Windows hides new tray icons in the overflow flyout; tell the user once how to keep it visible. */
+  private showWindowsPinHint(): void {
+    if (process.platform !== 'win32' || !Notification.isSupported()) return;
+    try {
+      const flag = path.join(app.getPath('userData'), 'tray-pin-hint-shown');
+      if (fs.existsSync(flag)) return;
+      fs.writeFileSync(flag, '1');
+      new Notification({
+        title: 'LibreLinkWard',
+        body: 'To keep your glucose value visible, drag the tray icon out of the ^ overflow menu onto the taskbar.',
+      }).show();
+    } catch (error) {
+      console.error('Failed to show tray pin hint:', error);
     }
   }
 
