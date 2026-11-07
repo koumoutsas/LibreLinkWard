@@ -78,6 +78,20 @@ export default function SettingsGeneralPage() {
     setUserCustomSoundEnabled,
   } = useAlertStore();
 
+  // Settings that take effect only after "Apply Changes". The button is enabled
+  // only while the current values differ from the last applied snapshot.
+  const currentSettings = JSON.stringify({
+    country, language, trayVisible, showForecast, showForecastCone,
+    bringToFrontEnabled, flashWindowEnabled, audioAlertEnabled, useCustomSound,
+  });
+  const [appliedSettings, setAppliedSettings] = useState<string>(currentSettings);
+  const hasPendingChanges = currentSettings !== appliedSettings;
+
+  const handleApplyChanges = () => {
+    sendRefreshPrimaryWindow();
+    setAppliedSettings(currentSettings);
+  };
+
   // TODO:: use a button and trigger this function
   const uploadCustomAlertSound = async () => {
     const fileInput = document.createElement('input');
@@ -231,7 +245,7 @@ export default function SettingsGeneralPage() {
         )}
 
         <div>
-          <Button onClick={() => sendRefreshPrimaryWindow()}>{t('Apply Changes')}</Button>
+          <Button onClick={handleApplyChanges} disabled={!hasPendingChanges}>{t('Apply Changes')}</Button>
         </div>
       </div>
     </SettingsLayout>
