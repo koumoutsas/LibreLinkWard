@@ -80,8 +80,8 @@ const createWindow = async () => {
   })
 
   mainWindow.on('close', function (this: BrowserWindow, event) {
-    // Keep running in the tray; on Linux only when there is a tray to restore it from.
-    if (!isQuitting && (process.platform === 'darwin' || (process.platform === 'linux' && hasTray()))) {
+    // Keep running in the tray; on Linux and Windows only when there is a tray to restore it from.
+    if (!isQuitting && (process.platform === 'darwin' || ((process.platform === 'linux' || process.platform === 'win32') && hasTray()))) {
       event.preventDefault();
       try {
         this.hide();
@@ -90,7 +90,7 @@ const createWindow = async () => {
       }
       return;
     }
-    // allow close on Windows, on Linux without a tray, or when quitting
+    // allow close on Windows/Linux without a tray, or when quitting
   });
 
 
