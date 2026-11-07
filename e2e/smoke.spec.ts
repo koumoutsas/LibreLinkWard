@@ -8,7 +8,7 @@ test('app launches and shows the language picker on first run', async () => {
     await window.waitForLoadState('domcontentloaded')
     await expect(window.getByRole('radio', { name: 'English' })).toHaveAttribute('aria-checked', 'true', { timeout: 20_000 })
     await window.getByRole('button', { name: 'Continue' }).click()
-    await expect(window.getByText('Add patient')).toBeVisible()
+    await expect(window.getByRole('button', { name: 'Add patient' })).toBeVisible()
   } finally {
     await cleanup()
   }
