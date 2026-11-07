@@ -41,7 +41,7 @@ beforeAll(() => {
 })
 
 beforeEach(() => {
-  useAuthStore.setState({ resultUnit: 'mg/dL', token: 't' })
+  useAuthStore.setState({ resultUnit: 'mg/dL' })
   ;(window as any).electron = {
     ipcRenderer: {
       on: jest.fn(() => jest.fn()),

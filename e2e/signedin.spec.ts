@@ -4,7 +4,7 @@ import { launchApp } from './helpers'
 
 // Signed in as far as the renderer is concerned (LibreLinkUp itself cannot be redirected to a mock),
 // then a Nightscout site served locally provides the readings.
-const AUTH = JSON.stringify({ state: { token: 't', accountId: 'a', country: 'global', language: 'en', resultUnit: 'mg/dL' }, version: 0 })
+const AUTH = JSON.stringify({ state: { country: 'global', language: 'en', resultUnit: 'mg/dL' }, version: 0 })
 
 test('signed in: add a Nightscout patient, open it, change settings and remove the login', async () => {
   const ns = await startMockNightscout('ns-secret')

@@ -33,7 +33,7 @@ function trace({ current, direction, swing, phase }: Patient) {
 }
 
 const AUTH = JSON.stringify({
-  state: { token: 't', accountId: 'a', country: 'global', language: 'en', resultUnit: 'mg/dL', showForecast: true, showForecastCone: true },
+  state: { country: 'global', language: 'en', resultUnit: 'mg/dL', showForecast: true, showForecastCone: true },
   version: 0,
 })
 

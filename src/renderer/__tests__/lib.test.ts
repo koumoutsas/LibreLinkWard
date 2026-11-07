@@ -20,7 +20,7 @@ const Client = LinkUpClient as unknown as jest.Mock
 beforeEach(() => {
   jest.clearAllMocks()
   localStorage.clear()
-  useAuthStore.setState({ resultUnit: 'mg/dL', token: 't' })
+  useAuthStore.setState({ resultUnit: 'mg/dL' })
   jest.spyOn(console, 'log').mockImplementation(() => {})
   jest.spyOn(console, 'error').mockImplementation(() => {})
 })
@@ -146,15 +146,12 @@ describe('AudioManager', () => {
 })
 
 describe('stores', () => {
-  it('auth store logs in and out and keeps settings', () => {
+  it('auth store keeps settings', () => {
     const s = useAuthStore.getState()
-    s.login('tok', 'eu', 'en', 'acc')
     s.setCountry('us')
     s.setLanguage('fr')
     s.setResultUnit('mmol/L')
-    expect(useAuthStore.getState()).toMatchObject({ token: 'tok', accountId: 'acc', country: 'us', language: 'fr', resultUnit: 'mmol/L' })
-    s.logout()
-    expect(useAuthStore.getState().token).toBeNull()
+    expect(useAuthStore.getState()).toMatchObject({ country: 'us', language: 'fr', resultUnit: 'mmol/L' })
   })
 
   it('alert store setters work and rehydration keeps alarms off', async () => {

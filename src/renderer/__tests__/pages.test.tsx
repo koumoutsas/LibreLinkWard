@@ -1,13 +1,11 @@
 import '@testing-library/jest-dom'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
-import { toast } from 'sonner'
 import LoginPage from '../pages/login'
 import LandingPage from '../pages/landing'
 import PatientPage from '../pages/patient'
 import SettingsAccountsPage from '../pages/settings/accounts'
 import SettingsGeneralPage from '../pages/settings/general'
-import { getAuthToken } from '../lib/linkup'
 import { reloadApp } from '../lib/reload'
 import { useAuthStore } from '../stores/auth'
 import { useAlertStore } from '../stores/alertStore'
@@ -15,7 +13,6 @@ import '../i18n/config'
 import { stubBrowser, stubElectron } from './helpers/electron'
 
 jest.mock('sonner', () => ({ toast: { error: jest.fn(), success: jest.fn() }, Toaster: () => null }))
-jest.mock('../lib/linkup', () => ({ getAuthToken: jest.fn() }))
 jest.mock('../lib/reload', () => ({ reloadApp: jest.fn() }))
 
 beforeAll(() => {
@@ -54,7 +51,7 @@ async function pick(trigger: HTMLElement, option: string) {
 beforeEach(() => {
   jest.clearAllMocks()
   localStorage.clear()
-  useAuthStore.setState({ token: null, resultUnit: 'mg/dL', language: 'en', country: 'global' })
+  useAuthStore.setState({ resultUnit: 'mg/dL', language: 'en', country: 'global' })
 })
 
 describe('LoginPage (language picker)', () => {

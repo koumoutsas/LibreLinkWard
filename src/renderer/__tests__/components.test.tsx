@@ -24,7 +24,7 @@ beforeAll(stubBrowser)
 beforeEach(() => {
   jest.clearAllMocks()
   localStorage.clear()
-  useAuthStore.setState({ resultUnit: 'mg/dL', token: 't' })
+  useAuthStore.setState({ resultUnit: 'mg/dL' })
 })
 
 describe('AddPatientForm', () => {
