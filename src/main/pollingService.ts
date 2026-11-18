@@ -228,6 +228,11 @@ export class PollingService {
   }
 
   private handleError(accountId: string, error: unknown, patientId?: string): void {
+    const status = error instanceof LinkUpError ? ` [${error.kind} ${error.status ?? ''}]` : ''
+    console.warn(
+      `Polling ${patientId ? `patient ${patientId}` : 'connections'} failed for account ${accountId}${status}:`,
+      error instanceof Error ? error.message : error,
+    )
     // Bad credentials will not fix themselves: stop instead of hammering the API.
     if (error instanceof LinkUpError && error.kind === 'auth') {
       this.halt(accountId)
