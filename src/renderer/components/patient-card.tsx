@@ -54,8 +54,8 @@ export function PatientCard({ patient, now: nowProp, onOpen }: Props) {
       <div className="flex justify-between px-4 pb-2 text-xs text-muted-foreground">
         <span>{age === undefined ? 'No data yet' : `${age} min ago`}</span>
         {patient.status === 'error' && (
-          <span className="text-red-600" title={patient.lastError}>
-            Connection problem
+          <span className="ml-2 truncate text-red-600" title={patient.lastError}>
+            {patient.lastError || 'Connection problem'}
           </span>
         )}
       </div>

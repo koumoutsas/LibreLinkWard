@@ -40,6 +40,25 @@ describe('LinkUpClient.login', () => {
     expect(s.country).toBe('eu')
   })
 
+  it.each([
+    ['in the body', () => jest.fn().mockResolvedValue(ok({ status: 911 }))],
+    ['as the HTTP status', () => jest.fn().mockRejectedValue(httpError(911))],
+  ])('reports a 911 %s as unavailable, not a bad login', async (_n, make) => {
+    await expect(new LinkUpClient({ credentials: creds, http: make() }).login()).rejects.toMatchObject({
+      kind: 'unavailable',
+      status: 911,
+      message: 'LibreView is temporarily unavailable',
+    })
+  })
+
+  it('reports a login lockout in the body as rate limited', async () => {
+    const http = jest.fn().mockResolvedValue(ok({ status: 429, data: { code: 60 } }))
+    await expect(new LinkUpClient({ credentials: creds, http }).login()).rejects.toMatchObject({
+      kind: 'rate-limit',
+      status: 429,
+    })
+  })
+
   it('throws auth error with body status', async () => {
     const http = jest.fn().mockResolvedValue(ok({ status: 2 }))
     await expect(new LinkUpClient({ credentials: creds, http }).login()).rejects.toMatchObject({
@@ -244,6 +263,11 @@ describe('LinkUpClient error classification', () => {
   it('maps an HTTP error status to a protocol error keeping the message', async () => {
     const { p } = fail(Object.assign(new Error('boom'), { response: { status: 500 } }))
     await expect(p).rejects.toMatchObject({ kind: 'protocol', status: 500, message: 'boom' })
+  })
+
+  it.each([911, 502, 503, 504])('maps HTTP %i to unavailable', async (status) => {
+    const { p } = fail(httpError(status))
+    await expect(p).rejects.toMatchObject({ kind: 'unavailable', status })
   })
 
   it('maps a failure without a response to a network error', async () => {

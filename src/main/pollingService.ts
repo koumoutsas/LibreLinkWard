@@ -240,11 +240,10 @@ export class PollingService {
       this.notify()
       return
     }
-    if (patientId) {
-      this.deps.patients
-        .getState()
-        .setError(viewKey(accountId, patientId), error instanceof Error ? error.message : String(error))
-    }
+    const message = error instanceof Error ? error.message : String(error)
+    const store = this.deps.patients.getState()
+    if (patientId) store.setError(viewKey(accountId, patientId), message)
+    else store.setAccountError(accountId, message)
   }
 
   private halt(id: string): void {

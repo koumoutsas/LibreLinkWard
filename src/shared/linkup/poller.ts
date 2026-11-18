@@ -21,6 +21,8 @@ const DEFAULT_MAX_BACKOFF = 15 * 60_000
 export class Poller {
   private timer?: ReturnType<typeof setTimeout>
   private running = false
+  /** Bumped by stop(), so a request still in flight when stopped reports nothing. */
+  private generation = 0
   private delay: number
   private readonly interval: number
   private readonly maxBackoff: number
@@ -39,27 +41,34 @@ export class Poller {
 
   stop(): void {
     this.running = false
+    this.generation++
     if (this.timer) clearTimeout(this.timer)
     this.timer = undefined
   }
 
   /** Runs one polling cycle; returns true if everything succeeded. */
   async tick(): Promise<boolean> {
+    const generation = this.generation
+    const live = () => generation === this.generation
     let ok = true
     try {
       const connections = await this.opts.client.getConnections()
+      if (!live()) return false
       this.opts.onConnections?.(connections)
       for (const c of connections) {
         try {
           const graph = await this.opts.client.getGraph(c.patientId)
+          if (!live()) return false
           this.opts.onUpdate(c.patientId, graph)
         } catch (e) {
+          if (!live()) return false
           ok = false
           this.opts.onError?.(e, c.patientId)
           if (e instanceof LinkUpError && e.kind === 'rate-limit') break
         }
       }
     } catch (e) {
+      if (!live()) return false
       ok = false
       this.opts.onError?.(e)
     }

@@ -45,7 +45,7 @@ export type Credentials = {
 export class LinkUpError extends Error {
   constructor(
     message: string,
-    public readonly kind: 'auth' | 'rate-limit' | 'network' | 'protocol',
+    public readonly kind: 'auth' | 'rate-limit' | 'unavailable' | 'network' | 'protocol',
     public readonly status?: number,
   ) {
     super(message)
@@ -57,4 +57,9 @@ export class LinkUpError extends Error {
 export const LOGIN_STATUS = {
   BAD_CREDENTIALS: 2,
   PRIVACY_POLICY: 4,
+  RATE_LIMITED: 429,
+  /** LibreView is down or in maintenance; sent as the HTTP status and/or in the body. */
+  UNAVAILABLE: 911,
 } as const
+
+export const UNAVAILABLE_MESSAGE = 'LibreView is temporarily unavailable'

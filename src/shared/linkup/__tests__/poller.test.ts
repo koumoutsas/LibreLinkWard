@@ -74,4 +74,22 @@ describe('Poller', () => {
     await jest.advanceTimersByTimeAsync(5000)
     expect(client.getConnections).toHaveBeenCalledTimes(1)
   })
+
+  it('reports nothing from a request still in flight when stopped', async () => {
+    let release!: (v: unknown) => void
+    const client = {
+      getConnections: jest.fn(() => new Promise((r) => { release = r })),
+      getGraph: jest.fn(),
+    }
+    const onConnections = jest.fn()
+    const onError = jest.fn()
+    const p = new Poller({ client: client as any, onUpdate: jest.fn(), onConnections, onError })
+    p.start()
+    p.stop()
+    release([{ patientId: 'p1' }])
+    await jest.advanceTimersByTimeAsync(0)
+    expect(onConnections).not.toHaveBeenCalled()
+    expect(client.getGraph).not.toHaveBeenCalled()
+    expect(onError).not.toHaveBeenCalled()
+  })
 })

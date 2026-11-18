@@ -27,6 +27,8 @@ export type PatientStoreState = {
   applyConnections: (connections: Connection[], accountId?: string) => void
   applyGraph: (patientId: string, graph: GraphResult, now?: number) => void
   setError: (patientId: string, message: string) => void
+  /** Marks every patient from this login as failing, e.g. when the patient list cannot be fetched. */
+  setAccountError: (accountId: string, message: string) => void
   /** Drops every patient that came from this login. */
   removeAccount: (accountId: string) => void
   clear: () => void
@@ -125,6 +127,16 @@ export const createPatientStore = () =>
           },
         }
       }),
+
+    setAccountError: (accountId, message) =>
+      set((s) => ({
+        patients: Object.fromEntries(
+          Object.entries(s.patients).map(([id, p]) => [
+            id,
+            p.accountId === accountId ? { ...p, status: 'error' as const, lastError: message } : p,
+          ]),
+        ),
+      })),
 
     removeAccount: (accountId) =>
       set((s) => ({

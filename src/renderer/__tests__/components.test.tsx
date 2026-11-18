@@ -197,7 +197,7 @@ describe('PatientCard', () => {
     const t = new Date(Date.now() - 5 * 60000).toISOString()
     const latest = { Timestamp: t, FactoryTimestamp: t, ValueInMgPerDl: 100 }
     show({ ...base, status: 'error', lastError: 'boom', latest, history: [latest], lastUpdated: Date.now() }, { urgentLow: 54, low: 70, high: 180, urgentHigh: 250, signalLossMinutes: 20 })
-    expect(screen.getByText('Connection problem')).toHaveAttribute('title', 'boom')
+    expect(screen.getByText('boom')).toHaveAttribute('title', 'boom')
     expect(screen.getByText('5 min ago')).toBeInTheDocument()
   })
 

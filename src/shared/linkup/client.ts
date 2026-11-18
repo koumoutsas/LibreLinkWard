@@ -5,7 +5,9 @@ import {
   GlucoseMeasurement,
   GraphResult,
   LinkUpError,
+  LOGIN_STATUS,
   Session,
+  UNAVAILABLE_MESSAGE,
 } from './types'
 import { normaliseMeasurement } from './timestamps'
 
@@ -69,6 +71,12 @@ export class LinkUpClient {
         headers: HEADERS,
       })
       const body = res.data
+      if (body?.status === LOGIN_STATUS.UNAVAILABLE) {
+        throw new LinkUpError(UNAVAILABLE_MESSAGE, 'unavailable', LOGIN_STATUS.UNAVAILABLE)
+      }
+      if (body?.status === LOGIN_STATUS.RATE_LIMITED) {
+        throw new LinkUpError('Rate limited', 'rate-limit', LOGIN_STATUS.RATE_LIMITED)
+      }
       if (body?.status !== 0) {
         throw new LinkUpError(
           `Login failed (status ${body?.status})`,
@@ -150,6 +158,9 @@ export class LinkUpClient {
       const status: number | undefined = e?.response?.status
       if (status === 429) throw new LinkUpError('Rate limited', 'rate-limit', status)
       if (status === 401) throw new LinkUpError('Unauthorized', 'auth', status)
+      if (status === LOGIN_STATUS.UNAVAILABLE || status === 502 || status === 503 || status === 504) {
+        throw new LinkUpError(UNAVAILABLE_MESSAGE, 'unavailable', status)
+      }
       throw new LinkUpError(
         e?.message ?? 'Network error',
         status ? 'protocol' : 'network',

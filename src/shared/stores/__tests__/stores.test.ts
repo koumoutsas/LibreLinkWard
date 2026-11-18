@@ -64,6 +64,16 @@ describe('patientStore', () => {
     s.getState().setError('nope', 'x')
     expect(s.getState().patients.nope).toBeUndefined()
   })
+
+  it('setAccountError marks only that login\'s patients', () => {
+    const s = createPatientStore()
+    s.getState().applyConnections([{ patientId: 'a1' }, { patientId: 'a2' }], 'A')
+    s.getState().applyConnections([{ patientId: 'b1' }], 'B')
+    s.getState().setAccountError('A', 'down')
+    expect(s.getState().patients.a1).toMatchObject({ status: 'error', lastError: 'down' })
+    expect(s.getState().patients.a2).toMatchObject({ status: 'error', lastError: 'down' })
+    expect(s.getState().patients.b1.status).toBe('ok')
+  })
 })
 
 describe('alarmStore', () => {

@@ -100,6 +100,20 @@ describe('PollingService', () => {
     service.stop()
   })
 
+  it('a failed patient list marks that login\'s patients and keeps polling', async () => {
+    const client = okClient()
+    const { service, patients } = setup(client, [stored1])
+    await service.startIfConfigured()
+    await flush()
+    patients.getState().applyConnections([{ patientId: 'other' }], 'someone-else')
+    client.getConnections.mockRejectedValueOnce(new LinkUpError('LibreView is temporarily unavailable', 'unavailable', 911))
+    await (service as any).pollers.get('u').tick()
+    expect(patients.getState().patients['u~p1']).toMatchObject({ status: 'error', lastError: 'LibreView is temporarily unavailable' })
+    expect(patients.getState().patients.other.status).toBe('ok')
+    expect(service.getStatus()).toBe('running')
+    service.stop()
+  })
+
   it('signOut clears credentials and patients', async () => {
     const { service, credentials, patients } = setup(okClient(), [stored1])
     await service.startIfConfigured()
