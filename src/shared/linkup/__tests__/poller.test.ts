@@ -92,4 +92,27 @@ describe('Poller', () => {
     expect(client.getGraph).not.toHaveBeenCalled()
     expect(onError).not.toHaveBeenCalled()
   })
+
+  it.each([
+    ['readings', (settle: { resolve: (v: unknown) => void }) => settle.resolve(graph('p1'))],
+    ['an error', (settle: { reject: (e: unknown) => void }) => settle.reject(new LinkUpError('down', 'network'))],
+  ])('reports nothing when a patient request in flight at stop returns %s', async (_n, finish) => {
+    const settle = {} as { resolve: (v: unknown) => void; reject: (e: unknown) => void }
+    const client = {
+      getConnections: jest.fn().mockResolvedValue([{ patientId: 'p1' }, { patientId: 'p2' }]),
+      getGraph: jest.fn(() => new Promise((resolve, reject) => Object.assign(settle, { resolve, reject }))),
+    }
+    const onUpdate = jest.fn()
+    const onError = jest.fn()
+    const p = new Poller({ client: client as any, onUpdate, onError })
+    p.start()
+    await jest.advanceTimersByTimeAsync(0)
+    expect(client.getGraph).toHaveBeenCalledTimes(1)
+    p.stop()
+    finish(settle as any)
+    await jest.advanceTimersByTimeAsync(0)
+    expect(onUpdate).not.toHaveBeenCalled()
+    expect(onError).not.toHaveBeenCalled()
+    expect(client.getGraph).toHaveBeenCalledTimes(1)
+  })
 })

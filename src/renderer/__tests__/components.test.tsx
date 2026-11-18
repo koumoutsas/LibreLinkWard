@@ -201,7 +201,12 @@ describe('PatientCard', () => {
     expect(screen.getByText('5 min ago')).toBeInTheDocument()
   })
 
-  it('shows -- instead of the value when the reading is older than the signal-loss timeout', () => {
+  it('falls back to a generic label for an error without a message', () => {
+    show({ ...base, status: 'error', lastError: '' })
+    expect(screen.getByText('Connection problem')).toBeInTheDocument()
+  })
+
+    it('shows -- instead of the value when the reading is older than the signal-loss timeout', () => {
     const t = new Date(Date.now() - 90 * 60000).toISOString()
     const latest = { Timestamp: t, FactoryTimestamp: t, ValueInMgPerDl: 100 }
     show({ ...base, latest, history: [latest], lastUpdated: Date.now() }, { urgentLow: 54, low: 70, high: 180, urgentHigh: 250, signalLossMinutes: 20 })
