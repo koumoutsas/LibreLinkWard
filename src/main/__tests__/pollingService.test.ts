@@ -40,6 +40,10 @@ const okClient = (): any => ({
 })
 
 describe('PollingService', () => {
+  // Several tests fail polls on purpose; keep the logged failures out of the test output.
+  beforeEach(() => jest.spyOn(console, 'warn').mockImplementation(() => {}))
+  afterEach(() => jest.restoreAllMocks())
+
   it('does nothing without stored credentials', async () => {
     const { service } = setup(okClient())
     expect(await service.startIfConfigured()).toBe(false)
