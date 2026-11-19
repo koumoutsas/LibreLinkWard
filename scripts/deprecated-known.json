@@ -1,0 +1,9 @@
+{
+  "_comment": "Deprecated packages pulled in by other packages that this repo cannot update. Keyed by exact name@version, so a new version or a new package still fails the check. Remove an entry once it no longer appears in the tree.",
+  "glob@7.2.3": "electron-builder -> app-builder-lib -> @electron/asar@3",
+  "inflight@1.0.6": "electron-builder -> app-builder-lib -> @electron/asar@3 -> glob@7",
+  "glob@10.5.0": "build tooling",
+  "boolean@3.2.0": "electron-builder -> app-builder-lib -> @electron/get -> global-agent",
+  "lodash.isequal@4.5.0": "electron-updater",
+  "whatwg-encoding@3.1.1": "jest-environment-jsdom -> jsdom"
+}
