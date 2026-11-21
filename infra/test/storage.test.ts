@@ -159,7 +159,6 @@ describe('imports pipeline', () => {
       NotificationConfiguration: {
         LambdaFunctionConfigurations: [
           Match.objectLike({ Events: ['s3:ObjectCreated:*'], Filter: { Key: { FilterRules: [{ Name: 'prefix', Value: 'raw/' }] } } }),
-          Match.objectLike({ Events: ['s3:ObjectCreated:*'], Filter: { Key: { FilterRules: [{ Name: 'prefix', Value: 'inbox/' }] } } }),
         ],
       },
     })
@@ -173,11 +172,8 @@ describe('imports pipeline', () => {
       { 'Fn::GetAtt': ['TherapyEvents', 'Arn'] },
     ])
     expect(JSON.stringify(statements)).not.toMatch(/iam:|s3tables:|"s3:\*"/)
-    // Deleting is limited to the drop folder and its error notes; raw exports are kept.
-    const deletes = JSON.stringify(statements.filter((s: any) => JSON.stringify(s.Action).includes('s3:DeleteObject')).map((s: any) => s.Resource))
-    expect(deletes).toContain('/inbox/*')
-    expect(deletes).toContain('/results/inbox-*')
-    expect(deletes).not.toContain('/raw/')
+    // Raw exports are kept: the function never deletes.
+    expect(JSON.stringify(statements)).not.toContain('s3:DeleteObject')
     expect(JSON.stringify(t.toJSON().Outputs)).toContain('ImportsBucketName')
   })
 })

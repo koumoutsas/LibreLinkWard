@@ -1,10 +1,10 @@
 import { FirehoseClient } from '@aws-sdk/client-firehose'
-import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
+import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import { strToU8, zipSync } from 'fflate'
 import { parseCsv } from '../lib/imports/csv'
 import { sendAll } from '../lib/imports/firehose'
 import { MMOL_TO_MGDL, parseGlookoZip, summarize } from '../lib/imports/glooko'
-import { importIdOf, parseInboxKey, parseRawKey, rawKey, resultKey } from '../lib/imports/keys'
+import { importIdOf, parseRawKey, rawKey, resultKey } from '../lib/imports/keys'
 import { localToUtc } from '../lib/imports/time'
 
 const NAME_LINE = '﻿Name:Jane Doe,Date Range:2026-11-01 - 2026-11-14'
@@ -139,6 +139,8 @@ describe('parseGlookoZip', () => {
     expect(() => parseGlookoZip(strToU8('not a zip'), ctx)).toThrow('zip')
     expect(() => parseGlookoZip(zipSync({ 'readme.txt': strToU8('x') }), ctx)).toThrow('no Glooko CSV')
     expect(() => parseGlookoZip(sampleZip(), { ...ctx, sid: 'p1' })).toThrow('patient id')
+    expect(() => parseGlookoZip(sampleZip(), { ...ctx, sid: 'linkup:p1/extra' })).toThrow('patient id')
+    expect(parseGlookoZip(sampleZip(), { ...ctx, sid: 'nightscout:my.site/ns' }).readings[0].sid).toBe('nightscout:my.site/ns')
     expect(() => parseGlookoZip(sampleZip(), { ...ctx, tz: 'Mars/Olympus' })).toThrow('time zone')
     expect(() => parseGlookoZip(sampleZip(), { ...ctx, tz: 'EET' })).toThrow('IANA')
   })
@@ -152,32 +154,6 @@ describe('keys', () => {
     expect(resultKey(id)).toBe(`results/${id}.json`)
     expect(() => parseRawKey('raw/other/0123456789abcdef.zip')).toThrow()
     expect(() => parseRawKey('results/x.json')).toThrow()
-  })
-})
-
-describe('parseInboxKey', () => {
-  it('reads format, sid and a multi-segment IANA zone from the path', () => {
-    expect(parseInboxKey('inbox/glooko/linkup:01a1-2b/Europe/Athens/export_Some One.zip')).toEqual({
-      format: 'glooko',
-      sid: 'linkup:01a1-2b',
-      tz: 'Europe/Athens',
-      name: 'export_Some One.zip',
-    })
-    expect(parseInboxKey('inbox/glooko/linkup:x/America/Argentina/Buenos_Aires/a.zip').tz).toBe('America/Argentina/Buenos_Aires')
-    // Nightscout sids may contain slashes.
-    expect(parseInboxKey('inbox/glooko/nightscout:my.site/ns/Europe/Athens/a.ZIP')).toMatchObject({ sid: 'nightscout:my.site/ns', tz: 'Europe/Athens' })
-    expect(parseInboxKey('inbox/glooko/linkup:x/UTC/a.zip')).toMatchObject({ sid: 'linkup:x', tz: 'UTC' })
-  })
-
-  it('explains what is wrong with a bad drop', () => {
-    expect(() => parseInboxKey('inbox/glooko/linkup:x/export.zip')).toThrow('inbox/<format>/<patient id>/<time zone>/<file>.zip')
-    expect(() => parseInboxKey('inbox/tidepool/linkup:x/UTC/a.zip')).toThrow('unknown format "tidepool"')
-    expect(() => parseInboxKey('inbox/glooko/linkup:x/UTC/a.csv')).toThrow('.zip')
-    expect(() => parseInboxKey('inbox/glooko/patient/UTC/a.zip')).toThrow('patient id')
-    expect(() => parseInboxKey('inbox/glooko/linkup:x/Europe/Atlantis/a.zip')).toThrow('no valid time zone')
-    expect(() => parseInboxKey('inbox/glooko/linkup:x/Europe/Athens/Extra/a.zip')).toThrow('no valid time zone')
-    // An extra folder before the zone must not become part of a LibreLinkUp id.
-    expect(() => parseInboxKey('inbox/glooko/linkup:x/Foo/Europe/Athens/a.zip')).toThrow('patient id')
   })
 })
 
@@ -215,26 +191,21 @@ describe('import function', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { handler } = require('../lambda/import') as typeof import('../lambda/import')
 
-  const run = async (metadata: Record<string, string>, body = sampleZip(), key = 'raw/glooko/0123456789abcdef.zip') => {
+  const run = async (metadata: Record<string, string>, body = sampleZip()) => {
     const puts: any[] = []
-    const deletes: string[] = []
     const streams: Record<string, number> = {}
     jest.spyOn(S3Client.prototype, 'send').mockImplementation(async (cmd: any) => {
       if (cmd instanceof GetObjectCommand) return { Metadata: metadata, Body: { transformToByteArray: async () => body } }
       if (cmd instanceof PutObjectCommand) puts.push(cmd.input)
-      if (cmd instanceof DeleteObjectCommand) deletes.push(cmd.input.Key!)
       return {}
     })
     jest.spyOn(FirehoseClient.prototype, 'send').mockImplementation(async (cmd: any) => {
       streams[cmd.input.DeliveryStreamName] = (streams[cmd.input.DeliveryStreamName] ?? 0) + cmd.input.Records.length
       return { FailedPutCount: 0 }
     })
-    // S3 events carry URL-encoded keys with + for spaces.
-    const encoded = encodeURIComponent(key).replace(/%2F/g, '/').replace(/%20/g, '+')
-    await handler({ Records: [{ s3: { bucket: { name: 'b' }, object: { key: encoded } } }] } as any)
+    await handler({ Records: [{ s3: { bucket: { name: 'b' }, object: { key: 'raw/glooko/0123456789abcdef.zip' } } }] } as any)
     jest.restoreAllMocks()
-    const resultPut = puts.find((p) => p.Key.startsWith('results/'))
-    return { puts, deletes, streams, result: resultPut && JSON.parse(resultPut.Body) }
+    return { puts, streams, result: JSON.parse(puts[0].Body) }
   }
 
   it('sends readings and events to their streams and records the result', async () => {
@@ -242,33 +213,6 @@ describe('import function', () => {
     expect(streams).toEqual({ 'readings-stream': 2, 'events-stream': 9 })
     expect(puts[0].Key).toBe('results/0123456789abcdef.json')
     expect(result).toMatchObject({ status: 'ok', importId: '0123456789abcdef', sid: 'linkup:p1', readings: { count: 2 }, events: { count: 9 } })
-  })
-
-  it('moves an inbox drop to raw/ with sid and tz from its path', async () => {
-    const zip = sampleZip()
-    const { puts, deletes, streams } = await run({}, zip, 'inbox/glooko/linkup:p1/Europe/Athens/export Jane Δ.zip')
-    const id = importIdOf(zip)
-    expect(puts).toEqual([
-      expect.objectContaining({
-        Key: `raw/glooko/${id}.zip`,
-        Metadata: { sid: 'linkup:p1', tz: 'Europe/Athens', from: encodeURIComponent('inbox/glooko/linkup:p1/Europe/Athens/export Jane Δ.zip') },
-      }),
-    ])
-    expect(deletes).toEqual(['inbox/glooko/linkup:p1/Europe/Athens/export Jane Δ.zip', `results/inbox-${id}.json`])
-    expect(streams).toEqual({})
-  })
-
-  it('leaves a bad inbox drop in place and records why', async () => {
-    const { puts, deletes } = await run({}, sampleZip(), 'inbox/glooko/linkup:p1/export.zip')
-    expect(deletes).toEqual([])
-    expect(puts).toHaveLength(1)
-    expect(puts[0].Key).toBe(`results/inbox-${importIdOf(sampleZip())}.json`)
-    expect(JSON.parse(puts[0].Body)).toMatchObject({ status: 'error', key: 'inbox/glooko/linkup:p1/export.zip', error: expect.stringContaining('<time zone>') })
-  })
-
-  it('ignores folder markers', async () => {
-    const { puts, deletes } = await run({}, sampleZip(), 'inbox/glooko/')
-    expect([puts, deletes]).toEqual([[], []])
   })
 
   it('records a failure instead of throwing', async () => {

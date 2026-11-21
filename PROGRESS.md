@@ -85,11 +85,8 @@ Workflow: commit and push after each finished piece of work; update this file.
   - **Checked** on the real 2026-11-01..14 export: 1285 CGM points and 143 events, with no warnings.
   - **Imported for real** (import `90756b3e18b32b0d`). The counts in Athena matched. Re-importing left the counts unchanged and only refreshed `imported_at`. The error bucket is empty.
   - **Zip reader:** `lib/imports/zip.ts` (zlib) replaces fflate. Glooko writes ZIP64 per-entry sizes without a ZIP64 end record, which fflate reads as 4 GB per file, and that fails in Lambda.
-  - **Drop folder:** `inbox/<format>/<sid>/<IANA zone>/<name>.zip`.
-    - The tz is the longest valid trailing zone, because Nightscout sids may contain `/`.
-    - The file is moved to `raw/`, keeping its original key in the `from` metadata.
-    - A bad drop stays in `inbox/`, with the reason in `results/inbox-<id>.json`.
-    - Verified live with both a bad and a good drop.
+  - **Drop folder:** an S3 `inbox/<format>/<sid>/<IANA zone>/` drop folder was tried and then removed (2026-11-21). Taking the zone from the path was error-prone: an extra folder could silently become part of a Nightscout sid. The CLI is the only import path.
+  - **Possible later:** an import API that sets the sid, lets you pick a time zone and uploads a local file, for example through a pre-signed POST. It would check the sid and zone before the upload.
 
 ## Known issues / notes
 - Nightscout: uploads only what is in the 12 h in-memory history, so an outage longer than that loses readings; API v3 not evaluated; labels hardcoded English; logout keeps Nightscout configs.
