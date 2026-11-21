@@ -88,6 +88,8 @@ Gaps where no install was recording can be filled from exports. Pump data, for e
 
 **Time changes.** A time that happened twice when the clocks went back is stored as the earlier instant, with a warning.
 
+**Size limits.** Each file inside the export can be at most 64 MB, and the import function has 1 GB of memory and 5 minutes. Real exports are a few MB. For a design that handles larger files, see [large-imports-design.md](large-imports-design.md).
+
 **Removing an import:** `DELETE FROM … readings WHERE install = 'import:<id>'` and `DELETE FROM … therapy_events WHERE import_id = '<id>'` in Athena.
 
 ## Analytics access
