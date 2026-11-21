@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
@@ -49,7 +49,8 @@ interface ToggleSwitchProps {
   className?: string;
   leftLabel?: string;
   rightLabel?: string;
-  checked?: boolean; // Initial state
+  /** The current value; the switch follows it when it changes (e.g. after a save elsewhere). */
+  checked?: boolean;
   onChange?: (checked: boolean) => void; // pass state to parent
 }
 
@@ -64,6 +65,8 @@ const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
   ...props
 }) => {
   const [isChecked, setIsChecked] = useState(initialChecked || false);
+  // Follow the value the parent reports, so a change made elsewhere is not hidden.
+  useEffect(() => setIsChecked(initialChecked || false), [initialChecked]);
 
   const handleToggle = () => {
     setIsChecked((prev) => {

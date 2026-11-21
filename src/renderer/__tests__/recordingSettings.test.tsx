@@ -2,6 +2,7 @@ import '@testing-library/jest-dom'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { PatientRecordingSettings } from '../components/patient-recording-settings'
 import { PatientCard } from '../components/patient-card'
+import { ToggleSwitch } from '../components/ui/toggle-switch'
 import { stubBrowser, stubElectron } from './helpers/electron'
 
 beforeAll(stubBrowser)
@@ -66,6 +67,33 @@ describe('PatientRecordingSettings', () => {
     await act(async () => fireEvent.click(screen.getByText('Remove config')))
     expect(ipc.ipcRenderer.invoke).toHaveBeenCalledWith('recording:clear', 'a~p1')
     await act(async () => emit('recording:changed'))
+  })
+})
+
+describe('ToggleSwitch', () => {
+  it('follows a checked value changed by its parent', () => {
+    const { rerender } = render(<ToggleSwitch checked onChange={() => {}} />)
+    expect(screen.getByRole('checkbox')).toBeChecked()
+    rerender(<ToggleSwitch checked={false} onChange={() => {}} />)
+    expect(screen.getByRole('checkbox')).not.toBeChecked()
+  })
+})
+
+describe('Recording switch after a new config', () => {
+  it('shows recording off once a pasted config turns it off', async () => {
+    let state = { ...base, hasBlob: true, enabled: true, install: 'desk' }
+    stubElectron(async (ch) => {
+      if (ch === 'recording:set-blob') {
+        state = { ...state, enabled: false }
+        return { ok: true }
+      }
+      return state
+    })
+    render(<PatientRecordingSettings patientId="a~p1" />)
+    expect(await screen.findByRole('checkbox')).toBeChecked()
+    fireEvent.change(screen.getByLabelText('Recording config'), { target: { value: 'new' } })
+    await act(async () => fireEvent.click(screen.getByText('Save')))
+    await waitFor(() => expect(screen.getByRole('checkbox')).not.toBeChecked())
   })
 })
 
