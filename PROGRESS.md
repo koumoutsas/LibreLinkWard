@@ -35,6 +35,26 @@ Workflow: commit and push after each finished piece of work; update this file.
 
 - [x] Nightscout as a reading source: `nightscout/source.ts` adapts a site to the Poller's `getConnections`/`getGraph` (one patient per site, last 12 h of sgv, 401/403 -> auth error, 429 -> rate-limit); `NightscoutClient.entriesSince`, secret optional; `StoredAccount` is now LibreLinkUp or Nightscout (`kind`); `PollingService.addNightscout` + IPC `linkup:add-nightscout`; Add patient form has a source switch. 109 tests green.
 
+- [x] Data recording (client + storage). Plan: `~/.claude/plans/i-want-to-keep-nifty-heron-of-f37f8024-330c-414f-b310-a9c07392a9f6.md`.
+  - **Client** (`src/main/recording/`):
+    - per-patient config blob, encrypted in `recording.bin`, off by default;
+    - `Recorder` with a per-patient watermark and a persisted outbox in `recording-state.json`;
+    - sends with Firehose `PutRecordBatch`;
+    - `origin` is `latest` or `graph`;
+    - turning recording on starts fresh, and turning it off drops the queue.
+  - **IPC:** `recording:get/set-blob/set-enabled/test/clear`.
+  - **UI:**
+    - `PatientRecordingSettings` under each patient in Settings > Accounts, with the sid and a Copy button;
+    - "● REC" on dashboard cards.
+  - **Storage** (`infra/`, its own CDK package and tests):
+    - S3 Tables Iceberg table `librelinkward.readings` with identifier fields `(sid, t, origin)`;
+    - a Direct PUT Firehose stream, every record an `update`;
+    - one IAM user and key per (install, sid) pair, with its blob in Secrets Manager (`scripts/blob.sh`);
+    - an optional read-only analytics role;
+    - a custom resource that enables the `s3tablescatalog` integration in IAM mode.
+  - **Docs:** `docs/storage-schema.md` (the contract) and `docs/recording-setup.md`.
+  - **Not done:** the stack has not been deployed to a real account yet.
+
 ## Known issues / notes
 - Nightscout: uploads only what is in the 12 h in-memory history, so an outage longer than that loses readings; API v3 not evaluated; labels hardcoded English; logout keeps Nightscout configs.
 - Old `useGlucoseAlerts` hook is now dead code (superseded by the alarm engine); `alertStore` still holds the bring-to-front/flash/sound toggles. Snooze applies to all kinds incl. urgent low (no bypass). Alarm sound/flash is triggered by the renderer, so a renderer window must exist (hidden-to-tray is fine). Tray number follows a patient only when exactly one is shared. Overlay/compact window mode UI was dropped from the dashboard.

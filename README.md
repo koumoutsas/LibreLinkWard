@@ -22,6 +22,7 @@ As there is no official API from [Abbott](https://www.freestyle.abbott/), the Li
 - **System tray** icon with the latest readings; the tooltip lists every patient.
 - Optional, per-patient **Nightscout upload** (off by default).
 - **Nightscout as a reading source**: add a Nightscout site as a patient (read-only).
+- Optional, per-patient **data recording** to your own AWS account (Firehose -> Iceberg on S3 Tables) for offline analysis (off by default). See [docs/recording-setup.md](docs/recording-setup.md).
 - Credentials stored with the OS keychain (Electron `safeStorage`); no tracking. See [PRIVACY.md](PRIVACY.md).
 - mg/dL and mmol/L, dark mode.
 
@@ -51,6 +52,9 @@ Choose _Add patient_ -> _Nightscout site_, enter the site URL, the API secret (l
 
 ### Nightscout upload (optional)
 In Settings > Accounts, under a LibreLinkUp login's patient, enable Nightscout and enter the URL, API secret and a device name, then press _Test_. New readings are uploaded via API v1 (`POST /api/v1/entries`), resuming after Nightscout's newest entry so nothing is duplicated, and retried with backoff on failure. Only readings still in the app's 12 h memory can be uploaded, so an outage longer than 12 h loses data. The secret is stored encrypted and only shown again when you press the eye button next to it.
+
+### Data recording (optional)
+Keeps every reading of a patient in your own AWS storage for later analysis, for example reports or predictive models. Several computers can record the same patient; the table keeps one row per reading. Deploy the storage stack from `infra/`, issue a config for each (computer, patient) pair, and paste it under the patient in Settings > Accounts > **Data recording**. Recording is off until you turn it on. Only readings from that moment on are sent, and readings that cannot be sent wait on disk and are retried. Setup: [docs/recording-setup.md](docs/recording-setup.md). The table contract for analytics: [docs/storage-schema.md](docs/storage-schema.md).
 
 ## Build
 Requires Node 22.15+. `npm install --legacy-peer-deps`

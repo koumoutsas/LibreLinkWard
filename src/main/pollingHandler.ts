@@ -14,11 +14,16 @@ import { PollingService } from './pollingService'
 import { NightscoutClient } from './nightscout/client'
 import { DEFAULT_DEVICE_NAME, NightscoutConfig, NightscoutConfigStore } from './nightscout/configStore'
 import { NightscoutUploader } from './nightscout/uploader'
+import { parseBlob } from './recording/blob'
+import { RecordingConfigs, RecordingConfigStore } from './recording/configStore'
+import { FirehosePublisher } from './recording/publisher'
+import { Recorder } from './recording/recorder'
 
 export const patientStore = createPatientStore()
 let service: PollingService | undefined
 let alarmService: AlarmService | undefined
 let uploader: NightscoutUploader | undefined
+let recorder: Recorder | undefined
 let unsubscribe: Array<() => void> = []
 
 const broadcast = (channel: string, payload: unknown) =>
@@ -28,6 +33,7 @@ const snapshot = () => ({
   status: service?.getStatus() ?? 'signed-out',
   accounts: service?.getAccounts() ?? [],
   patients: Object.values(patientStore.getState().patients),
+  recording: recorder?.summary() ?? {},
 })
 
 export const registerPollingHandler = async () => {
@@ -62,6 +68,30 @@ export const registerPollingHandler = async () => {
   })
   uploader.setConfigs(nsConfigs)
 
+  const recStore = new RecordingConfigStore(path.join(dir, 'recording.bin'), toSafeStorage(safeStorage))
+  let recConfigs: RecordingConfigs = await recStore.load()
+  recorder = new Recorder({
+    patients: patientStore,
+    sidOf: (key) => service!.sidFor(key),
+    stateFile: path.join(dir, 'recording-state.json'),
+    appVersion: app.getVersion(),
+    onStatus: () => {
+      broadcast('recording:changed', null)
+      broadcast('linkup:state', snapshot())
+    },
+  })
+  recorder.setConfigs(recConfigs)
+  const saveRecording = async (next: RecordingConfigs) => {
+    await recStore.save(next)
+    recConfigs = next
+    recorder!.setConfigs(recConfigs)
+    broadcast('recording:changed', null)
+    broadcast('linkup:state', snapshot())
+  }
+  /** Forgets recording settings, queue and watermark of every view matching the predicate. */
+  const dropRecording = (match: (key: string) => boolean) =>
+    saveRecording(Object.fromEntries(Object.entries(recConfigs).filter(([k]) => !match(k))))
+
   unsubscribe = [
     patientStore.subscribe(() => broadcast('linkup:state', snapshot())),
     alarmStore.subscribe((s) => {
@@ -83,9 +113,10 @@ export const registerPollingHandler = async () => {
   ipcMain.handle('linkup:reveal-nightscout-secret', (_e, accountId: string) =>
     service!.getNightscoutSecret(accountId),
   )
-  ipcMain.handle('linkup:remove-account', (_e, accountId: string) =>
-    service!.removeAccount(accountId),
-  )
+  ipcMain.handle('linkup:remove-account', async (_e, accountId: string) => {
+    await service!.removeAccount(accountId)
+    await dropRecording((k) => k.startsWith(`${accountId}~`))
+  })
   ipcMain.handle('linkup:get-state', () => snapshot())
   ipcMain.handle('alarms:get', (_e, patientId: string) => {
     const p = patientStore.getState().patients[patientId]
@@ -147,16 +178,66 @@ export const registerPollingHandler = async () => {
       }
     },
   )
-  ipcMain.on('logout', () => service!.signOut())
+  // The secret only ever goes in; the renderer gets the rest of the target and the status.
+  ipcMain.handle('recording:get', (_e, key: string) => {
+    const c = recConfigs[key]
+    return {
+      sid: service!.sidFor(key),
+      enabled: c?.enabled ?? false,
+      hasBlob: !!c,
+      install: c?.target.install,
+      region: c?.target.region,
+      stream: c?.target.stream,
+      status: recorder!.getStatus(key),
+    }
+  })
+  ipcMain.handle('recording:set-blob', async (_e, key: string, blob: string) => {
+    try {
+      const sid = service!.sidFor(key)
+      if (!sid) throw new Error('Unknown patient')
+      const target = parseBlob(blob, sid)
+      // A new config starts disabled; the operator turns it on explicitly.
+      await saveRecording({ ...recConfigs, [key]: { target, enabled: false } })
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  })
+  ipcMain.handle('recording:set-enabled', async (_e, key: string, enabled: boolean) => {
+    const c = recConfigs[key]
+    if (!c) return
+    // Turning on starts fresh: nothing from before this moment is sent.
+    await saveRecording({
+      ...recConfigs,
+      [key]: { ...c, enabled, enabledAt: enabled ? Date.now() : undefined },
+    })
+  })
+  ipcMain.handle('recording:test', async (_e, key: string) => {
+    const c = recConfigs[key]
+    if (!c) return { ok: false, error: 'No recording config' }
+    try {
+      await new FirehosePublisher(c.target).test()
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  })
+  ipcMain.handle('recording:clear', (_e, key: string) => dropRecording((k) => k === key))
+  ipcMain.on('logout', () => {
+    service!.signOut()
+    dropRecording(() => true).catch((e) => console.error("Could not clear recording settings:", e))
+  })
 
   alarmService.start()
   uploader.start()
+  recorder.start()
   await service.startIfConfigured()
 }
 
 export const destroyPollingHandler = () => {
   alarmService?.stop()
   uploader?.stop()
+  recorder?.stop()
   service?.stop()
   unsubscribe.forEach((u) => u())
   unsubscribe = []
@@ -178,5 +259,10 @@ export const destroyPollingHandler = () => {
     'nightscout:reveal-secret',
     'nightscout:set',
     'nightscout:test',
+    'recording:get',
+    'recording:set-blob',
+    'recording:set-enabled',
+    'recording:test',
+    'recording:clear',
   ].forEach((c) => ipcMain.removeHandler(c))
 }

@@ -41,6 +41,12 @@ jobs:
         run: npm run lint
       - name: Unit and integration tests with coverage gate
         run: npm run test:coverage
+      - name: Storage stack (infra) typecheck and tests
+        working-directory: infra
+        run: |
+          npm ci
+          npx tsc --noEmit
+          npx jest
 
   e2e:
     name: E2E smoke (${{ matrix.os }})

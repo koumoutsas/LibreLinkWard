@@ -11,9 +11,15 @@ import { LEVEL_CLASS, formatGlucose, glucoseLevel, minutesSince } from '@/lib/gl
 
 const GRAPH_WINDOW_MS = 6 * 60 * 60 * 1000
 
-type Props = { patient: PatientState; now?: number; onOpen: (patientId: string) => void }
+type Props = {
+  patient: PatientState
+  now?: number
+  onOpen: (patientId: string) => void
+  /** Set when this patient's readings are being recorded. */
+  recording?: 'on' | 'problem'
+}
 
-export function PatientCard({ patient, now: nowProp, onOpen }: Props) {
+export function PatientCard({ patient, now: nowProp, onOpen, recording }: Props) {
   const ticking = useNow()
   const now = nowProp ?? ticking
   const unit = useAuthStore((s) => s.resultUnit)
@@ -52,7 +58,18 @@ export function PatientCard({ patient, now: nowProp, onOpen }: Props) {
         />
       </div>
       <div className="flex justify-between px-4 pb-2 text-xs text-muted-foreground">
-        <span>{age === undefined ? 'No data yet' : `${age} min ago`}</span>
+        <span>
+          {age === undefined ? 'No data yet' : `${age} min ago`}
+          {recording && (
+            <span
+              className={`ml-2 ${recording === 'problem' ? 'text-red-600' : ''}`}
+              title={recording === 'problem' ? 'Recording problem: see settings' : 'Readings are being recorded'}
+              data-testid="recording-indicator"
+            >
+              ● REC
+            </span>
+          )}
+        </span>
         {patient.status === 'error' && (
           <span className="ml-2 truncate text-red-600" title={patient.lastError}>
             {patient.lastError || 'Connection problem'}

@@ -5,7 +5,7 @@ import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron"
 export type Channels = string
 
 /** Channels the renderer may use; anything else is refused. */
-const ALLOWED = /^(alarms:[a-z-]+|linkup:[a-z-]+|nightscout:[a-z-]+|get-alert-sound-file|upload-custom-alert-sound|ipc-open-file|open-new-window|logout|logout-event|refresh-all|refresh-primary|trigger-warning-alerts|update-tray-readings|create-tray|destroy-tray)$/
+const ALLOWED = /^(alarms:[a-z-]+|linkup:[a-z-]+|nightscout:[a-z-]+|recording:[a-z-]+|get-alert-sound-file|upload-custom-alert-sound|ipc-open-file|open-new-window|logout|logout-event|refresh-all|refresh-primary|trigger-warning-alerts|update-tray-readings|create-tray|destroy-tray)$/
 
 const check = (channel: Channels) => {
   if (!ALLOWED.test(channel)) throw new Error(`IPC channel not allowed: ${channel}`)

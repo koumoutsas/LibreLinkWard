@@ -4,6 +4,11 @@ import { createAlarmStore, createPatientStore } from '../shared/stores'
 import { AlarmService, AlarmNotification } from '../main/alarmService'
 import { PollingService } from '../main/pollingService'
 import { NightscoutUploader } from '../main/nightscout/uploader'
+import { Recorder } from '../main/recording/recorder'
+import type { ReadingRecord } from '../main/recording/publisher'
+import fs from 'fs'
+import os from 'os'
+import path from 'path'
 import { startMockLibreLinkUp, startMockNightscout } from './helpers/mockServers'
 
 const MIN = 60_000
@@ -116,6 +121,47 @@ describe('polling -> store -> alarm -> Nightscout (mock servers)', () => {
     expect(ns.state.entries.every((e) => e.device === 'ward')).toBe(true)
     // Only the opted-in patient was uploaded.
     expect(ns.state.entries.map((e) => e.sgv).sort((a, b) => a - b)).toEqual([95, 100, 110])
+  })
+
+  it('records one patient from two installs into one deduplicated table', async () => {
+    // Stands in for the Iceberg table: Firehose upserts on (sid, t, origin).
+    const table = new Map<string, ReadingRecord>()
+    const sentBy: Record<string, number> = {}
+    const install = async (name: string) => {
+      const { patients, polling } = build()
+      const recorder = new Recorder({
+        patients,
+        sidOf: (k) => polling.sidFor(k),
+        stateFile: path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'rec-')), 'state.json'),
+        appVersion: 'test',
+        createPublisher: () => ({
+          send: async (records) => {
+            sentBy[name] = (sentBy[name] ?? 0) + records.length
+            records.forEach((r) => table.set(`${r.sid}|${r.t}|${r.origin}`, r))
+            return []
+          },
+          test: async () => {},
+        }),
+      })
+      const target = { region: 'r', stream: 's', accessKeyId: 'k', secretAccessKey: 'x', sid: 'linkup:ann', install: name }
+      recorder.setConfigs({ 'v~ann': { target, enabled: true, enabledAt: Date.now() - 20 * MIN } })
+      recorder.start()
+      stops.push(() => recorder.stop())
+      await polling.signIn(creds)
+      await waitFor(() => !!patients.getState().patients['v~ann']?.latest)
+      await recorder.sync()
+      await recorder.sync()
+      expect(polling.sidFor('v~ann')).toBe('linkup:ann')
+    }
+    await install('desk')
+    await install('laptop')
+    expect(sentBy).toEqual({ desk: 3, laptop: 3 })
+    const rows = [...table.values()].sort((a, b) => a.t - b.t)
+    expect(rows.map((r) => [r.mgdl, r.origin])).toEqual([
+      [110, 'graph'],
+      [100, 'graph'],
+      [95, 'latest'],
+    ])
   })
 
   it('retries after a Nightscout outage and resumes after the stored newest entry', async () => {

@@ -13,6 +13,8 @@ export default defineConfig([
     'release/app/dist',
     'release/build',
     '.erb/dll',
+    'infra/cdk.out',
+    'infra/node_modules',
     '**/*.d.ts',
   ]),
   js.configs.recommended,

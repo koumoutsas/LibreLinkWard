@@ -5,7 +5,15 @@ export type LinkUpStatus = string
 
 export type AccountInfo = { id: string; username: string; kind?: 'linkup' | 'nightscout'; status: 'running' | 'auth-error'; url?: string; hasSecret?: boolean }
 
-export type LinkUpSnapshot = { status: LinkUpStatus; accounts?: AccountInfo[]; patients: PatientState[] }
+export type RecordingIndicator = 'on' | 'problem'
+
+export type LinkUpSnapshot = {
+  status: LinkUpStatus
+  accounts?: AccountInfo[]
+  patients: PatientState[]
+  /** Patients being recorded, by store key. */
+  recording?: Record<string, RecordingIndicator>
+}
 
 /** Live view of the main-process patient store via `linkup:*` IPC. */
 export function usePatients(): LinkUpSnapshot & { loaded: boolean } {

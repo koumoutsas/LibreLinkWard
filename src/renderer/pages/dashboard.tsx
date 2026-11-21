@@ -11,7 +11,7 @@ import { openNewWindow, setRedirectTo } from '@/lib/utils';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { patients, accounts = [], status, loaded } = usePatients();
+  const { patients, accounts = [], status, loaded, recording } = usePatients();
   const [adding, setAdding] = useState(false);
 
   const openSettings = (path: string) => {
@@ -81,7 +81,12 @@ export default function DashboardPage() {
               )}
               <div className="flex flex-col gap-4">
                 {list.map((p) => (
-                  <PatientCard key={p.patientId} patient={p} onOpen={(id) => navigate(`/patients/${id}`)} />
+                  <PatientCard
+                    key={p.patientId}
+                    patient={p}
+                    recording={recording?.[p.patientId]}
+                    onOpen={(id) => navigate(`/patients/${id}`)}
+                  />
                 ))}
               </div>
             </section>

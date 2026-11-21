@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto'
 import { CredentialStore, NightscoutAccount, StoredAccount } from './credentialStore'
 import { NightscoutClient } from './nightscout/client'
 import { NightscoutSource } from './nightscout/source'
+import { sidFor } from './recording/sid'
 
 export type ServiceStatus = 'signed-out' | 'running' | 'auth-error'
 
@@ -79,6 +80,13 @@ export class PollingService {
       status: this.accountStatus.get(a.id) ?? 'running',
       ...(a.kind === 'nightscout' && { url: a.url, hasSecret: !!a.apiSecret }),
     }))
+  }
+
+  /** The stable source id of a patient view, or undefined when its login is gone. */
+  sidFor(key: string): string | undefined {
+    const sep = key.indexOf('~')
+    const account = this.accounts.get(key.slice(0, sep))
+    return sep > 0 && account ? sidFor(account, key.slice(sep + 1)) : undefined
   }
 
   /** Starts polling every stored login, if any. */
