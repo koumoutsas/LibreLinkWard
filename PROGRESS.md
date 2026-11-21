@@ -59,7 +59,7 @@ Workflow: commit and push after each finished piece of work; update this file.
       - 7 records from two installs became 4 rows, one per `(sid, t, origin)`;
       - the error bucket stayed empty.
     - The test rows, the test pair and the temporary Athena workgroup were then removed.
-    - Pairs live in `infra/pairs.local.json`, which is gitignored and stays on this Mac. The first real pair is `home-macbook` for one LibreLinkUp patient, issued 2026-11-21.
+    - `home-macbook` was first issued as a CDK pair, then moved to the admin API on 2026-11-21. `infra/pairs.local.json` (gitignored) is now empty and every pair comes from the API.
 
 - [x] Pairs admin API (`infra/lambda/pairs.ts`, `infra/scripts/pairs.ts`).
   - **Endpoints:** API Gateway HTTP API with IAM auth: `POST`, `GET` and `DELETE /pairs`.
@@ -73,7 +73,7 @@ Workflow: commit and push after each finished piece of work; update this file.
     - list works;
     - revoke works, and AWS refuses the revoked key after about 240 s;
     - a second revoke gets 404.
-  - **CDK pairs:** the `pairs.local.json` path still works, and `home-macbook` remains a CDK pair.
+  - **CDK pairs:** the `pairs.local.json` path still works, but no pairs use it.
 
 ## Known issues / notes
 - Nightscout: uploads only what is in the 12 h in-memory history, so an outage longer than that loses readings; API v3 not evaluated; labels hardcoded English; logout keeps Nightscout configs.
