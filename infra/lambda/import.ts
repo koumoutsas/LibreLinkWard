@@ -1,3 +1,4 @@
+import { createHash } from 'crypto'
 import { FirehoseClient } from '@aws-sdk/client-firehose'
 import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import type { S3Event } from 'aws-lambda'
@@ -37,8 +38,16 @@ export async function importObject(bucket: string, key: string): Promise<void> {
     const sid = obj.Metadata?.sid ?? ''
     const tz = obj.Metadata?.tz ?? ''
     if (!sid || !tz) throw new Error('The upload has no sid or tz metadata; upload it with scripts/import.ts')
-    const bytes = await obj.Body!.transformToByteArray()
-    const parsed = parseGlookoZip(bytes, { sid, tz, importId, importedAt: startedAt })
+    // A standalone copy: the SDK may hand back a view into a larger, pooled buffer.
+    const bytes = new Uint8Array(await obj.Body!.transformToByteArray())
+    let parsed
+    try {
+      parsed = parseGlookoZip(bytes, { sid, tz, importId, importedAt: startedAt })
+    } catch (e) {
+      const got = createHash('sha256').update(bytes).digest('hex').slice(0, 16)
+      console.error(`Parse failed on ${bytes.length} bytes (sha ${got}):`, e)
+      throw e
+    }
     await sendAll(firehose, env('READINGS_STREAM'), parsed.readings)
     await sendAll(firehose, env('EVENTS_STREAM'), parsed.events)
     result = { status: 'ok', importId, key, sid, tz, importedAt: new Date(startedAt).toISOString(), ...summarize(parsed) }

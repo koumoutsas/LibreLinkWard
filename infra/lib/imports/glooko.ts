@@ -1,6 +1,6 @@
-import { unzipSync, strFromU8 } from 'fflate'
 import { parseCsv } from './csv'
 import { checkZone, localToUtc } from './time'
+import { unzip } from './zip'
 import { IMPORT_ORIGIN } from '../schema'
 
 /** Bumped when the parser changes in a way that affects rows; written to readings.app_version. */
@@ -208,12 +208,7 @@ function glucoseColumn(header: string[], prefix: string): { name: string; factor
 export function parseGlookoZip(zip: Uint8Array, ctx: ImportContext): ImportResult {
   checkSid(ctx.sid)
   checkZone(ctx.tz)
-  let entries: Record<string, Uint8Array>
-  try {
-    entries = unzipSync(zip)
-  } catch (e) {
-    throw new Error(`Not a readable zip file: ${e instanceof Error ? e.message : e}`, { cause: e })
-  }
+  const entries = unzip(zip)
   const files = Object.keys(entries)
     .filter((p) => /\.csv$/i.test(p) && !p.split('/').some((s) => s.startsWith('__MACOSX') || s.startsWith('.')))
     .sort()
@@ -237,7 +232,7 @@ export function parseGlookoZip(zip: Uint8Array, ctx: ImportContext): ImportResul
       result.files.push({ name: path, table: 'ignored', rows: 0 })
       continue
     }
-    let rows = parseCsv(strFromU8(entries[path]))
+    let rows = parseCsv(new TextDecoder().decode(entries[path]))
     // First line: "Name:<patient>,Date Range:<from> - <to>". Keep the range, never the name.
     if (rows[0]?.[0]?.startsWith('Name:')) {
       const range = rows[0].find((f) => f.startsWith('Date Range:'))
