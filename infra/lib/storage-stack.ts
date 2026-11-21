@@ -11,11 +11,12 @@ import * as firehose from 'aws-cdk-lib/aws-kinesisfirehose'
 import * as iam from 'aws-cdk-lib/aws-iam'
 import * as logs from 'aws-cdk-lib/aws-logs'
 import * as s3 from 'aws-cdk-lib/aws-s3'
+import * as s3n from 'aws-cdk-lib/aws-s3-notifications'
 import * as s3tables from 'aws-cdk-lib/aws-s3tables'
 import * as secrets from 'aws-cdk-lib/aws-secretsmanager'
 import { Construct } from 'constructs'
 import { Pair, pairKey, secretName } from './pairs'
-import { FIELDS, NAMESPACE, TABLE, UNIQUE_KEYS } from './schema'
+import { EVENT_FIELDS, EVENT_UNIQUE_KEYS, EVENTS_TABLE, FIELDS, NAMESPACE, TABLE, UNIQUE_KEYS } from './schema'
 
 export type StorageStackProps = StackProps & {
   pairs: Pair[]
@@ -47,26 +48,13 @@ export class StorageStack extends Stack {
     })
     namespace.applyRemovalPolicy(RemovalPolicy.RETAIN)
 
-    const table = new s3tables.CfnTable(this, 'ReadingsTable', {
-      tableBucketArn: bucket.attrTableBucketArn,
-      namespace: NAMESPACE,
-      tableName: TABLE,
-      openTableFormat: 'ICEBERG',
-      icebergMetadata: {
-        icebergSchemaV2: {
-          schemaV2FieldType: 'struct',
-          schemaV2FieldList: FIELDS.map((f) => ({ id: f.id, name: f.name, type: f.type, required: f.required, doc: f.doc })),
-          identifierFieldIds: FIELDS.filter((f) => UNIQUE_KEYS.includes(f.name)).map((f) => f.id),
-        },
-        icebergPartitionSpec: {
-          fields: [{ sourceId: FIELDS.find((f) => f.name === 'sid')!.id, transform: 'identity', name: 'sid' }],
-        },
-        // Firehose delivers to format-version 2 tables only.
-        tableProperties: { 'format-version': '2' },
-      },
-    })
+    const table = icebergTable(this, 'ReadingsTable', bucket, TABLE, FIELDS, UNIQUE_KEYS)
     table.addResourceDependency(namespace)
     table.applyRemovalPolicy(RemovalPolicy.RETAIN)
+
+    const eventsTable = icebergTable(this, 'TherapyEventsTable', bucket, EVENTS_TABLE, EVENT_FIELDS, EVENT_UNIQUE_KEYS)
+    eventsTable.addResourceDependency(namespace)
+    eventsTable.applyRemovalPolicy(RemovalPolicy.RETAIN)
 
     if (props.enableCatalogIntegration ?? true) {
       // One-time, account+Region: exposes table buckets to Glue/Athena/Firehose with IAM access control.
@@ -96,6 +84,7 @@ export class StorageStack extends Stack {
         ]),
       })
       table.node.addDependency(integration)
+      eventsTable.node.addDependency(integration)
     }
 
     const errors = new s3.Bucket(this, 'DeliveryErrors', {
@@ -134,38 +123,20 @@ export class StorageStack extends Stack {
     errors.grantReadWrite(role)
     logGroup.grantWrite(role)
 
-    const stream = new firehose.CfnDeliveryStream(this, 'Readings', {
-      deliveryStreamType: 'DirectPut',
-      icebergDestinationConfiguration: {
-        roleArn: role.roleArn,
-        catalogConfiguration: { catalogArn: `arn:aws:glue:${region}:${account}:catalog/s3tablescatalog/${bucketName}` },
-        destinationTableConfigurationList: [
-          { destinationDatabaseName: NAMESPACE, destinationTableName: TABLE, uniqueKeys: UNIQUE_KEYS },
-        ],
-        // Every record is an update: inserts new keys, replaces identical rows sent by other installs.
-        processingConfiguration: {
-          enabled: true,
-          processors: [{
-            type: 'MetadataExtraction',
-            parameters: [
-              { parameterName: 'JsonParsingEngine', parameterValue: 'JQ-1.6' },
-              { parameterName: 'MetadataExtractionQuery', parameterValue: '{operation: "update"}' },
-            ],
-          }],
-        },
-        bufferingHints: { intervalInSeconds: 300, sizeInMBs: 5 },
-        retryOptions: { durationInSeconds: 3600 },
-        s3BackupMode: 'FailedDataOnly',
-        s3Configuration: {
-          bucketArn: errors.bucketArn,
-          roleArn: role.roleArn,
-          errorOutputPrefix: 'errors/',
-        },
-        cloudWatchLoggingOptions: { enabled: true, logGroupName: logGroup.logGroupName, logStreamName: logStream.logStreamName },
-      },
-    })
+    const delivery = { role, errors, logGroup, catalogArn: `arn:aws:glue:${region}:${account}:catalog/s3tablescatalog/${bucketName}` }
+    const stream = deliveryStream(this, 'Readings', { ...delivery, table: TABLE, uniqueKeys: UNIQUE_KEYS, logStream, errorPrefix: 'errors/' })
     stream.node.addDependency(role)
     stream.addResourceDependency(table)
+
+    const eventsStream = deliveryStream(this, 'TherapyEvents', {
+      ...delivery,
+      table: EVENTS_TABLE,
+      uniqueKeys: EVENT_UNIQUE_KEYS,
+      logStream: new logs.LogStream(this, 'EventsDeliveryLogStream', { logGroup }),
+      errorPrefix: 'errors/therapy_events/',
+    })
+    eventsStream.node.addDependency(role)
+    eventsStream.addResourceDependency(eventsTable)
 
     // One IAM user per (install, patient): audit and revocation, nothing else.
     for (const pair of props.pairs) {
@@ -195,6 +166,7 @@ export class StorageStack extends Stack {
     }
 
     this.pairsApi(stream)
+    this.importsPipeline(stream, eventsStream)
 
     if (props.analyticsPrincipal) {
       const reader = new iam.Role(this, 'AnalyticsReader', {
@@ -220,7 +192,41 @@ export class StorageStack extends Stack {
 
     new CfnOutput(this, 'StreamName', { value: stream.ref })
     new CfnOutput(this, 'TableIdentifier', { value: `s3tablescatalog/${bucketName}.${NAMESPACE}.${TABLE}` })
+    new CfnOutput(this, 'EventsTableIdentifier', { value: `s3tablescatalog/${bucketName}.${NAMESPACE}.${EVENTS_TABLE}` })
     new CfnOutput(this, 'Pairs', { value: props.pairs.map(secretName).join(' ') || '(none)' })
+  }
+
+  /**
+   * Backfill from exports: scripts/import.ts uploads a file to raw/ in the
+   * imports bucket (kept, so it can be re-imported by a newer parser), and a
+   * function parses it into the readings and therapy_events streams. Writing
+   * needs your own AWS credentials with s3:PutObject on the bucket.
+   */
+  private importsPipeline(readings: firehose.CfnDeliveryStream, events: firehose.CfnDeliveryStream): void {
+    const imports = new s3.Bucket(this, 'Imports', {
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      enforceSSL: true,
+      removalPolicy: RemovalPolicy.RETAIN,
+    })
+    const fn = new nodejs.NodejsFunction(this, 'ImportFunction', {
+      entry: path.join(__dirname, '..', 'lambda', 'import.ts'),
+      runtime: lambda.Runtime.NODEJS_22_X,
+      architecture: lambda.Architecture.ARM_64,
+      timeout: cdk.Duration.minutes(5),
+      memorySize: 1024,
+      environment: { READINGS_STREAM: readings.ref, EVENTS_STREAM: events.ref },
+      bundling: { externalModules: ['@aws-sdk/*'], minify: true },
+      logGroup: new logs.LogGroup(this, 'ImportLogs', { retention: logs.RetentionDays.ONE_MONTH, removalPolicy: RemovalPolicy.DESTROY }),
+    })
+    imports.grantRead(fn, 'raw/*')
+    imports.grantPut(fn, 'results/*')
+    fn.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['firehose:PutRecordBatch'],
+      resources: [readings.attrArn, events.attrArn],
+    }))
+    imports.addEventNotification(s3.EventType.OBJECT_CREATED, new s3n.LambdaDestination(fn), { prefix: 'raw/' })
+    new CfnOutput(this, 'ImportsBucketName', { value: imports.bucketName })
   }
 
   /**
@@ -286,4 +292,73 @@ export class StorageStack extends Stack {
     })
     new CfnOutput(this, 'PairsApiUrl', { value: api.apiEndpoint })
   }
+}
+
+type Field = { id: number; name: string; type: string; required: boolean; doc: string }
+
+/** An Iceberg v2 table partitioned by sid, with `keys` as identifier fields. */
+function icebergTable(scope: Construct, id: string, bucket: s3tables.CfnTableBucket, name: string, fields: readonly Field[], keys: string[]) {
+  return new s3tables.CfnTable(scope, id, {
+    tableBucketArn: bucket.attrTableBucketArn,
+    namespace: NAMESPACE,
+    tableName: name,
+    openTableFormat: 'ICEBERG',
+    icebergMetadata: {
+      icebergSchemaV2: {
+        schemaV2FieldType: 'struct',
+        schemaV2FieldList: fields.map((f) => ({ id: f.id, name: f.name, type: f.type, required: f.required, doc: f.doc })),
+        identifierFieldIds: fields.filter((f) => keys.includes(f.name)).map((f) => f.id),
+      },
+      icebergPartitionSpec: {
+        fields: [{ sourceId: fields.find((f) => f.name === 'sid')!.id, transform: 'identity', name: 'sid' }],
+      },
+      // Firehose delivers to format-version 2 tables only.
+      tableProperties: { 'format-version': '2' },
+    },
+  })
+}
+
+type DeliveryProps = {
+  role: iam.Role
+  errors: s3.Bucket
+  logGroup: logs.LogGroup
+  logStream: logs.LogStream
+  catalogArn: string
+  table: string
+  uniqueKeys: string[]
+  errorPrefix: string
+}
+
+/** A Direct PUT stream that upserts every record into `table` on `uniqueKeys`. */
+function deliveryStream(scope: Construct, id: string, p: DeliveryProps) {
+  return new firehose.CfnDeliveryStream(scope, id, {
+    deliveryStreamType: 'DirectPut',
+    icebergDestinationConfiguration: {
+      roleArn: p.role.roleArn,
+      catalogConfiguration: { catalogArn: p.catalogArn },
+      destinationTableConfigurationList: [
+        { destinationDatabaseName: NAMESPACE, destinationTableName: p.table, uniqueKeys: p.uniqueKeys },
+      ],
+      // Every record is an update: inserts new keys, replaces identical rows sent by other installs or imports.
+      processingConfiguration: {
+        enabled: true,
+        processors: [{
+          type: 'MetadataExtraction',
+          parameters: [
+            { parameterName: 'JsonParsingEngine', parameterValue: 'JQ-1.6' },
+            { parameterName: 'MetadataExtractionQuery', parameterValue: '{operation: "update"}' },
+          ],
+        }],
+      },
+      bufferingHints: { intervalInSeconds: 300, sizeInMBs: 5 },
+      retryOptions: { durationInSeconds: 3600 },
+      s3BackupMode: 'FailedDataOnly',
+      s3Configuration: {
+        bucketArn: p.errors.bucketArn,
+        roleArn: p.role.roleArn,
+        errorOutputPrefix: p.errorPrefix,
+      },
+      cloudWatchLoggingOptions: { enabled: true, logGroupName: p.logGroup.logGroupName, logStreamName: p.logStream.logStreamName },
+    },
+  })
 }

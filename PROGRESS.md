@@ -75,6 +75,15 @@ Workflow: commit and push after each finished piece of work; update this file.
     - a second revoke gets 404.
   - **CDK pairs:** the `pairs.local.json` path still works, but no pairs use it.
 
+- [x] Backfill imports (data layer only; not deployed yet).
+  - **Format:** a Glooko "Export to CSV" zip, which carries both LibreView CGM data (15 min) and the Omnipod DASH PDM data.
+  - **Code:** parser `infra/lib/imports/glooko.ts`, Lambda `infra/lambda/import.ts`, CLI `infra/scripts/import.ts`.
+  - **Flow:** the CLI uploads to the `Imports` bucket under `raw/glooko/<sha16>.zip` with sid and tz metadata. An S3 trigger starts the function, which sends rows to Firehose and writes `results/<id>.json`.
+  - **CGM:** goes to `readings` with `origin = 'import'` and `install = 'import:<id>'`. The readings table schema is unchanged, because editing the CfnTable schema risks replacing the table.
+  - **Everything else:** goes to the new `therapy_events` table, upserted on `(sid, t, kind, subtype)`, through its own `TherapyEvents` stream.
+  - **Existing resources:** synth was compared before and after; `ReadingsTable`, `Readings` and every other existing resource are byte-identical, and the change only adds resources.
+  - **Checked** on the real 2026-11-01..14 export: 1285 CGM points and 143 events, with no warnings.
+
 ## Known issues / notes
 - Nightscout: uploads only what is in the 12 h in-memory history, so an outage longer than that loses readings; API v3 not evaluated; labels hardcoded English; logout keeps Nightscout configs.
 - Old `useGlucoseAlerts` hook is now dead code (superseded by the alarm engine); `alertStore` still holds the bring-to-front/flash/sound toggles. Snooze applies to all kinds incl. urgent low (no bypass). Alarm sound/flash is triggered by the renderer, so a renderer window must exist (hidden-to-tray is fine). Tray number follows a patient only when exactly one is shared. Overlay/compact window mode UI was dropped from the dashboard.

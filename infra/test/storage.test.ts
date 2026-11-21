@@ -127,3 +127,52 @@ describe('pairs API resources', () => {
     expect(JSON.stringify(t.toJSON().Outputs)).toContain('PairsApiUrl')
   })
 })
+
+describe('imports pipeline', () => {
+  const t = synth()
+
+  it('creates therapy_events keyed on (sid, t, kind, subtype), partitioned by sid', () => {
+    t.hasResourceProperties('AWS::S3Tables::Table', {
+      TableName: 'therapy_events',
+      IcebergMetadata: {
+        IcebergSchemaV2: Match.objectLike({ IdentifierFieldIds: [1, 2, 3, 4] }),
+        IcebergPartitionSpec: { Fields: [{ SourceId: 1, Transform: 'identity', Name: 'sid' }] },
+        TableProperties: { 'format-version': '2' },
+      },
+    })
+    t.hasResourceProperties('AWS::KinesisFirehose::DeliveryStream', {
+      IcebergDestinationConfiguration: Match.objectLike({
+        DestinationTableConfigurationList: [
+          { DestinationDatabaseName: 'librelinkward', DestinationTableName: 'therapy_events', UniqueKeys: ['sid', 't', 'kind', 'subtype'] },
+        ],
+      }),
+    })
+  })
+
+  it('keeps the readings table and stream logical ids', () => {
+    expect(Object.keys(t.findResources('AWS::S3Tables::Table')).sort()).toEqual(['ReadingsTable', 'TherapyEventsTable'])
+    expect(Object.keys(t.findResources('AWS::KinesisFirehose::DeliveryStream')).sort()).toEqual(['Readings', 'TherapyEvents'])
+  })
+
+  it('runs the import function on uploads under raw/ with write access to both streams only', () => {
+    t.hasResourceProperties('Custom::S3BucketNotifications', {
+      NotificationConfiguration: {
+        LambdaFunctionConfigurations: [Match.objectLike({
+          Events: ['s3:ObjectCreated:*'],
+          Filter: { Key: { FilterRules: [{ Name: 'prefix', Value: 'raw/' }] } },
+        })],
+      },
+    })
+    const fnPolicy = Object.values(t.findResources('AWS::IAM::Policy')).find((p: any) =>
+      JSON.stringify(p.Properties.Roles ?? []).includes('ImportFunction'),
+    ) as any
+    const statements = fnPolicy.Properties.PolicyDocument.Statement
+    const put = statements.find((s: any) => s.Action === 'firehose:PutRecordBatch')
+    expect(put.Resource).toEqual([
+      { 'Fn::GetAtt': ['Readings', 'Arn'] },
+      { 'Fn::GetAtt': ['TherapyEvents', 'Arn'] },
+    ])
+    expect(JSON.stringify(statements)).not.toMatch(/iam:|s3tables:|"s3:\*"/)
+    expect(JSON.stringify(t.toJSON().Outputs)).toContain('ImportsBucketName')
+  })
+})

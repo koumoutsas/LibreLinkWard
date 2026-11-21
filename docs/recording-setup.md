@@ -65,6 +65,31 @@ Pairs listed in the gitignored `infra/pairs.local.json` are still created on eve
 
 `pairs.ts list` and `revoke` don't see these pairs. Prefer the API for new pairs.
 
+## Backfilling from exports
+
+Gaps where no install was recording can be filled from exports. Pump data, for example an Omnipod DASH PDM, can be added the same way. The first supported format is the **Glooko** CSV export. It holds CGM data that Glooko pulled from LibreView alongside the pump's boluses, basal, alarms and BG readings, plus logged food.
+
+1. **Export.** In Glooko, upload the PDM, then choose _Export to CSV_ for a date range. You get a zip such as `export_<name>.zip`.
+2. **Get the patient id.** The id comes from **Settings > Accounts > Data recording**, as above, for example `linkup:1a2b…`. Backfilled rows must use the same id as the live data so the two can be combined.
+3. **Check the file locally.** This parses the file and prints counts and warnings without uploading anything. The export's times are local wall-clock times, so give the time zone the device was set to:
+   ```sh
+   cd infra
+   npx ts-node scripts/import.ts glooko linkup:1a2b… ~/Downloads/export.zip --tz Europe/Athens --check
+   ```
+4. **Import it.** Run the same command without `--check`, with `AWS_REGION` set. Your AWS credentials need `s3:PutObject`, `s3:GetObject` and `s3:ListBucket` on the stack's `ImportsBucketName`; account admins have these.
+   - The CLI uploads the zip and waits for the import function to finish.
+   - CGM points go to `readings` with origin `import`. Everything else goes to `therapy_events`, as described in [storage-schema.md](storage-schema.md).
+   - Rows show up in about five minutes.
+5. **List imports** with `npx ts-node scripts/import.ts list`.
+
+**Re-importing is safe.** Importing the same or an overlapping export again replaces the rows; nothing is duplicated, so exporting overlapping ranges is fine.
+
+**The raw export is kept.** The uploaded zip stays in the imports bucket under `raw/`, so a later importer can process it again. It is encrypted and private, and contains the patient's name as Glooko wrote it; the tables never store the name.
+
+**Time changes.** A time that happened twice when the clocks went back is stored as the earlier instant, with a warning.
+
+**Removing an import:** `DELETE FROM … readings WHERE install = 'import:<id>'` and `DELETE FROM … therapy_events WHERE import_id = '<id>'` in Athena.
+
 ## Analytics access
 
 Deploy with `-c analyticsPrincipal=arn:aws:iam::<account>:role/<role>` to get a read-only `AnalyticsRoleArn` output. That role can read the table through the Glue catalog, and nothing else. Your analytics jobs assume it.
