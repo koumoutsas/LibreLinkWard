@@ -15,9 +15,12 @@ You need Node 22, AWS credentials for the target account, and a [bootstrapped](h
 ```sh
 cd infra
 npm install
-npx cdk bootstrap            # once per account and Region
+export AWS_REGION=eu-central-1   # the Region to keep the data in; use the same one every time
+npx cdk bootstrap                # once per account and Region
 npx cdk deploy
 ```
+
+The stack deploys to the Region of your AWS credentials, or to `AWS_REGION` if set. Deploying later from a shell with a different Region creates a second, separate copy, so always set the same Region.
 
 Things to know before deploying:
 

@@ -53,7 +53,13 @@ Workflow: commit and push after each finished piece of work; update this file.
     - an optional read-only analytics role;
     - a custom resource that enables the `s3tablescatalog` integration in IAM mode.
   - **Docs:** `docs/storage-schema.md` (the contract) and `docs/recording-setup.md`.
-  - **Not done:** the stack has not been deployed to a real account yet.
+  - **Deployed** 2026-11-21 to account 290130028274, eu-central-1 (stack `LibreLinkWardStorage`). Always deploy with `AWS_REGION=eu-central-1`; the local default Region is us-east-1.
+    - Verified end to end with a temporary pair:
+      - the test pair's key was accepted;
+      - 7 records from two installs became 4 rows, one per `(sid, t, origin)`;
+      - the error bucket stayed empty.
+    - The test rows, the test pair and the temporary Athena workgroup were then removed.
+    - No real pairs are issued yet.
 
 ## Known issues / notes
 - Nightscout: uploads only what is in the 12 h in-memory history, so an outage longer than that loses readings; API v3 not evaluated; labels hardcoded English; logout keeps Nightscout configs.
