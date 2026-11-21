@@ -157,10 +157,10 @@ describe('imports pipeline', () => {
   it('runs the import function on uploads under raw/ with write access to both streams only', () => {
     t.hasResourceProperties('Custom::S3BucketNotifications', {
       NotificationConfiguration: {
-        LambdaFunctionConfigurations: [Match.objectLike({
-          Events: ['s3:ObjectCreated:*'],
-          Filter: { Key: { FilterRules: [{ Name: 'prefix', Value: 'raw/' }] } },
-        })],
+        LambdaFunctionConfigurations: [
+          Match.objectLike({ Events: ['s3:ObjectCreated:*'], Filter: { Key: { FilterRules: [{ Name: 'prefix', Value: 'raw/' }] } } }),
+          Match.objectLike({ Events: ['s3:ObjectCreated:*'], Filter: { Key: { FilterRules: [{ Name: 'prefix', Value: 'inbox/' }] } } }),
+        ],
       },
     })
     const fnPolicy = Object.values(t.findResources('AWS::IAM::Policy')).find((p: any) =>
@@ -173,6 +173,11 @@ describe('imports pipeline', () => {
       { 'Fn::GetAtt': ['TherapyEvents', 'Arn'] },
     ])
     expect(JSON.stringify(statements)).not.toMatch(/iam:|s3tables:|"s3:\*"/)
+    // Deleting is limited to the drop folder and its error notes; raw exports are kept.
+    const deletes = JSON.stringify(statements.filter((s: any) => JSON.stringify(s.Action).includes('s3:DeleteObject')).map((s: any) => s.Resource))
+    expect(deletes).toContain('/inbox/*')
+    expect(deletes).toContain('/results/inbox-*')
+    expect(deletes).not.toContain('/raw/')
     expect(JSON.stringify(t.toJSON().Outputs)).toContain('ImportsBucketName')
   })
 })

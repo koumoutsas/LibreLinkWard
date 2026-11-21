@@ -199,8 +199,9 @@ export class StorageStack extends Stack {
   /**
    * Backfill from exports: scripts/import.ts uploads a file to raw/ in the
    * imports bucket (kept, so it can be re-imported by a newer parser), and a
-   * function parses it into the readings and therapy_events streams. Writing
-   * needs your own AWS credentials with s3:PutObject on the bucket.
+   * function parses it into the readings and therapy_events streams. Files
+   * dropped into inbox/<format>/<sid>/<IANA zone>/ are moved to raw/ first.
+   * Writing needs your own AWS credentials with s3:PutObject on the bucket.
    */
   private importsPipeline(readings: firehose.CfnDeliveryStream, events: firehose.CfnDeliveryStream): void {
     const imports = new s3.Bucket(this, 'Imports', {
@@ -220,12 +221,18 @@ export class StorageStack extends Stack {
       logGroup: new logs.LogGroup(this, 'ImportLogs', { retention: logs.RetentionDays.ONE_MONTH, removalPolicy: RemovalPolicy.DESTROY }),
     })
     imports.grantRead(fn, 'raw/*')
+    imports.grantRead(fn, 'inbox/*')
+    imports.grantDelete(fn, 'inbox/*')
+    imports.grantDelete(fn, 'results/inbox-*')
+    imports.grantPut(fn, 'raw/*')
     imports.grantPut(fn, 'results/*')
     fn.addToRolePolicy(new iam.PolicyStatement({
       actions: ['firehose:PutRecordBatch'],
       resources: [readings.attrArn, events.attrArn],
     }))
     imports.addEventNotification(s3.EventType.OBJECT_CREATED, new s3n.LambdaDestination(fn), { prefix: 'raw/' })
+    // Drop folder: inbox/<format>/<sid>/<IANA zone>/<name>.zip, for any S3 client.
+    imports.addEventNotification(s3.EventType.OBJECT_CREATED, new s3n.LambdaDestination(fn), { prefix: 'inbox/' })
     new CfnOutput(this, 'ImportsBucketName', { value: imports.bucketName })
   }
 

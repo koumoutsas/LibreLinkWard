@@ -75,7 +75,7 @@ Workflow: commit and push after each finished piece of work; update this file.
     - a second revoke gets 404.
   - **CDK pairs:** the `pairs.local.json` path still works, but no pairs use it.
 
-- [x] Backfill imports (data layer only; not deployed yet).
+- [x] Backfill imports (data layer only). Deployed 2026-11-21.
   - **Format:** a Glooko "Export to CSV" zip, which carries both LibreView CGM data (15 min) and the Omnipod DASH PDM data.
   - **Code:** parser `infra/lib/imports/glooko.ts`, Lambda `infra/lambda/import.ts`, CLI `infra/scripts/import.ts`.
   - **Flow:** the CLI uploads to the `Imports` bucket under `raw/glooko/<sha16>.zip` with sid and tz metadata. An S3 trigger starts the function, which sends rows to Firehose and writes `results/<id>.json`.
@@ -83,6 +83,13 @@ Workflow: commit and push after each finished piece of work; update this file.
   - **Everything else:** goes to the new `therapy_events` table, upserted on `(sid, t, kind, subtype)`, through its own `TherapyEvents` stream.
   - **Existing resources:** synth was compared before and after; `ReadingsTable`, `Readings` and every other existing resource are byte-identical, and the change only adds resources.
   - **Checked** on the real 2026-11-01..14 export: 1285 CGM points and 143 events, with no warnings.
+  - **Imported for real** (import `90756b3e18b32b0d`). The counts in Athena matched. Re-importing left the counts unchanged and only refreshed `imported_at`. The error bucket is empty.
+  - **Zip reader:** `lib/imports/zip.ts` (zlib) replaces fflate. Glooko writes ZIP64 per-entry sizes without a ZIP64 end record, which fflate reads as 4 GB per file, and that fails in Lambda.
+  - **Drop folder:** `inbox/<format>/<sid>/<IANA zone>/<name>.zip`.
+    - The tz is the longest valid trailing zone, because Nightscout sids may contain `/`.
+    - The file is moved to `raw/`, keeping its original key in the `from` metadata.
+    - A bad drop stays in `inbox/`, with the reason in `results/inbox-<id>.json`.
+    - Verified live with both a bad and a good drop.
 
 ## Known issues / notes
 - Nightscout: uploads only what is in the 12 h in-memory history, so an outage longer than that loses readings; API v3 not evaluated; labels hardcoded English; logout keeps Nightscout configs.

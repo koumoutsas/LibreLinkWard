@@ -82,6 +82,25 @@ Gaps where no install was recording can be filled from exports. Pump data, for e
    - Rows show up in about five minutes.
 5. **List imports** with `npx ts-node scripts/import.ts list`.
 
+### Drop folder (no CLI needed)
+
+Any S3 client can start an import: the console, `aws s3 cp`, Cyberduck, or a phone app. Upload the zip to the stack's `ImportsBucketName` at:
+
+```
+inbox/glooko/<patient id>/<time zone>/<any file name>.zip
+```
+
+For example: `inbox/glooko/linkup:1a2b…/Europe/Athens/export_2026-11.zip`.
+
+- **Patient id:** the id described above, written as is, including the colon.
+- **Time zone:** the IANA name of the zone the **devices' clocks were set to** when the data was recorded, not the zone of the person uploading. It goes in as written in the tz database, so it can span folders: `Europe/Athens`, `America/New_York`, `America/Argentina/Buenos_Aires` or `UTC`. Daylight saving is applied automatically.
+  - **If you travelled:** when the PDM clock was moved to another zone, export that period separately and drop it under that zone.
+- **What happens next:** the file is moved to `raw/` and imported, as with the CLI.
+  - The original file name is kept in the import's metadata.
+  - `import.ts list` shows the result, and rows appear in about five minutes.
+- **If the path is wrong** (unknown format, bad patient id, or no valid time zone), the file stays in `inbox/`. The reason is written to `results/inbox-<id>.json` and shows in `import.ts list`. Delete the file and upload it again to the right path.
+- **The CLI is still the safer route.** It checks the file before uploading, while the drop folder only reports a bad export after the fact.
+
 **Re-importing is safe.** Importing the same or an overlapping export again replaces the rows; nothing is duplicated, so exporting overlapping ranges is fine.
 
 **The raw export is kept.** The uploaded zip stays in the imports bucket under `raw/`, so a later importer can process it again. It is encrypted and private, and contains the patient's name as Glooko wrote it; the tables never store the name.
