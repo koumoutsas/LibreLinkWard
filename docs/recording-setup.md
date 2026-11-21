@@ -33,13 +33,17 @@ Things to know before deploying:
 Each computer that should record a patient needs its own config. This lets you see who wrote what and revoke one computer without affecting the others.
 
 1. **Get the patient id.** In LibreLinkWard, open **Settings > Accounts**. Under the patient, **Data recording** shows the patient id (for example `linkup:1a2b…`). Press **Copy**.
-2. **List the pairs.** Add every (install, patient) pair to `infra/cdk.json`, or pass them on the command line. Install names may use letters, digits, `.`, `_` and `-`.
-   ```sh
-   npx cdk deploy -c 'pairs=[{"install":"ward-desk","sid":"linkup:1a2b…"},{"install":"home-mac","sid":"linkup:1a2b…"}]'
+2. **List the pairs.** Put every (install, patient) pair in `infra/pairs.local.json`, then deploy again. The file is gitignored, because patient ids should not end up in a public repo; keep a backup of it. Install names may use letters, digits, `.`, `_` and `-`.
+   ```json
+   [
+     { "install": "ward-desk", "sid": "linkup:1a2b…" },
+     { "install": "home-mac", "sid": "linkup:1a2b…" }
+   ]
    ```
-3. **Print each config:**
+   `-c 'pairs=[…]'` on the command line overrides the file.
+3. **Print each config** (macOS: add `| pbcopy` to copy it instead of showing the secret):
    ```sh
-   scripts/blob.sh ward-desk linkup:1a2b…
+   scripts/blob.sh ward-desk linkup:1a2b… eu-central-1
    ```
 4. **Install it on the matching computer.** Paste the config into **Data recording** for that patient and press **Save**. The app rejects a config issued for another patient. Press **Test connection**, then turn on **Record this patient**.
 
@@ -47,7 +51,7 @@ Recording only sends readings from the moment it is turned on. Turning it off di
 
 ## Revoke or rotate
 
-- **Revoke:** remove the pair from `pairs` and deploy again. Its IAM user and key are deleted, and that install shows "Recording stopped".
+- **Revoke:** remove the pair from `pairs.local.json` and deploy again. Its IAM user and key are deleted, and that install shows "Recording stopped".
 - **Rotate a key:** add `"serial": 1` to the pair (or increase it), deploy, then paste the new config on that computer.
 
 ## Analytics access

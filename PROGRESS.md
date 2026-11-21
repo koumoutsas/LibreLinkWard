@@ -59,7 +59,7 @@ Workflow: commit and push after each finished piece of work; update this file.
       - 7 records from two installs became 4 rows, one per `(sid, t, origin)`;
       - the error bucket stayed empty.
     - The test rows, the test pair and the temporary Athena workgroup were then removed.
-    - No real pairs are issued yet.
+    - Pairs live in `infra/pairs.local.json`, which is gitignored and stays on this Mac. The first real pair is `home-macbook` for one LibreLinkUp patient, issued 2026-11-21.
 
 ## Known issues / notes
 - Nightscout: uploads only what is in the 12 h in-memory history, so an outage longer than that loses readings; API v3 not evaluated; labels hardcoded English; logout keeps Nightscout configs.

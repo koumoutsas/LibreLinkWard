@@ -1,8 +1,12 @@
 {
   "app": "npx ts-node --prefer-ts-exts bin/storage.ts",
-  "watch": { "include": ["bin", "lib"] },
+  "watch": {
+    "include": [
+      "bin",
+      "lib"
+    ]
+  },
   "context": {
-    "pairs": [],
     "analyticsPrincipal": "",
     "enableCatalogIntegration": true
   }
