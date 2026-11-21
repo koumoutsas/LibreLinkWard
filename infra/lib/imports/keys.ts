@@ -53,6 +53,5 @@ export function parseInboxKey(key: string): { format: Format; sid: string; tz: s
     checkSid(sid)
     return { format: format as Format, sid, tz, name }
   }
-  checkSid(middle.slice(0, -1).join('/'))
   throw new Error(`Cannot import ${key}: no valid time zone before the file name; ${usage}`)
 }

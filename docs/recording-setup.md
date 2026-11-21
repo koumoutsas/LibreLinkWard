@@ -98,7 +98,10 @@ For example: `inbox/glooko/linkup:1a2b…/Europe/Athens/export_2026-11.zip`.
 - **What happens next:** the file is moved to `raw/` and imported, as with the CLI.
   - The original file name is kept in the import's metadata.
   - `import.ts list` shows the result, and rows appear in about five minutes.
-- **If the path is wrong** (unknown format, bad patient id, or no valid time zone), the file stays in `inbox/`. The reason is written to `results/inbox-<id>.json` and shows in `import.ts list`. Delete the file and upload it again to the right path.
+- **If the path is wrong** (unknown format, bad patient id, or no valid time zone), the file stays in `inbox/`.
+  - Typos, bare city names (`Athens`) and abbreviations (`EET`) are rejected, not guessed.
+  - Case is ignored (`europe/athens` works).
+  - **Check folders carefully before a Nightscout id's zone.** Nightscout ids can contain `/`, so an extra folder there becomes part of the patient id and the rows will not join the live data. The import result shows the patient id it used. The reason is written to `results/inbox-<id>.json` and shows in `import.ts list`. Delete the file and upload it again to the right path.
 - **The CLI is still the safer route.** It checks the file before uploading, while the drop folder only reports a bad export after the fact.
 
 **Re-importing is safe.** Importing the same or an overlapping export again replaces the rows; nothing is duplicated, so exporting overlapping ranges is fine.

@@ -175,6 +175,9 @@ describe('parseInboxKey', () => {
     expect(() => parseInboxKey('inbox/glooko/linkup:x/UTC/a.csv')).toThrow('.zip')
     expect(() => parseInboxKey('inbox/glooko/patient/UTC/a.zip')).toThrow('patient id')
     expect(() => parseInboxKey('inbox/glooko/linkup:x/Europe/Atlantis/a.zip')).toThrow('no valid time zone')
+    expect(() => parseInboxKey('inbox/glooko/linkup:x/Europe/Athens/Extra/a.zip')).toThrow('no valid time zone')
+    // An extra folder before the zone must not become part of a LibreLinkUp id.
+    expect(() => parseInboxKey('inbox/glooko/linkup:x/Foo/Europe/Athens/a.zip')).toThrow('patient id')
   })
 })
 

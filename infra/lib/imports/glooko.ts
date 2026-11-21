@@ -63,7 +63,8 @@ export type ImportResult = {
   warnings: string[]
 }
 
-const SID = /^(linkup|nightscout):\S+$/
+// LibreLinkUp ids never contain "/"; Nightscout sids may carry a site path.
+const SID = /^(linkup:[^\s/]+|nightscout:\S+)$/
 export const checkSid = (sid: string) => {
   if (!SID.test(sid)) throw new Error(`"${sid}" is not a patient id; expected linkup:<patientId> or nightscout:<host>`)
 }
