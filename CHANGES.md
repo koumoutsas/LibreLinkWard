@@ -10,7 +10,7 @@ LibreLinkWard is a fork of [LibreLinkUpDesktop](https://github.com/Crazy-Marvin/
 - Optional per-patient Nightscout uploader.
 - Nightscout as a reading source (read-only), alongside LibreLinkUp.
 - Optional AR2 forecast on the graphs and predictive alarms.
-- Optional per-patient data recording to the user's own AWS account (Firehose -> Iceberg on S3 Tables), with the storage stack in `infra/`.
+- Optional per-patient data recording to the user's own AWS account (Firehose -> Iceberg on S3 Tables), with the storage stack in `infra/`, including an IAM-authenticated admin API to issue, list and revoke per-computer configs.
 - Unit, integration and e2e tests, mutation testing (Stryker) and a lint gate in CI (currently macOS only); Dependabot and a weekly dependency-health check; removed Snap/Flathub/Store packaging.
 - Docs: README, CONTRIBUTING, PRIVACY.
 
