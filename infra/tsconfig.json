@@ -9,5 +9,5 @@
     "noEmit": true,
     "types": ["node", "jest"]
   },
-  "include": ["bin", "lib", "test"]
+  "include": ["bin", "lib", "lambda", "scripts", "test"]
 }

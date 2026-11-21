@@ -107,3 +107,23 @@ describe('parsePairs', () => {
     expect(secretName({ install: 'desk', sid: 'nightscout:a.b:8443/x' })).toBe('librelinkward/blob/desk/nightscout_a.b_8443/x')
   })
 })
+
+describe('pairs API resources', () => {
+  const t = synth()
+
+  it('exposes GET/POST/DELETE /pairs behind IAM auth', () => {
+    for (const method of ['GET', 'POST', 'DELETE']) {
+      t.hasResourceProperties('AWS::ApiGatewayV2::Route', { RouteKey: `${method} /pairs`, AuthorizationType: 'AWS_IAM' })
+    }
+  })
+
+  it('lets the function create users only under the pairs path and with the boundary', () => {
+    const fnPolicy = Object.values(t.findResources('AWS::IAM::Policy')).find((p: any) =>
+      JSON.stringify(p).includes('iam:CreateUser'),
+    ) as any
+    const create = fnPolicy.Properties.PolicyDocument.Statement.find((s: any) => ([] as string[]).concat(s.Action).includes('iam:CreateUser'))
+    expect(create.Resource).toBe('arn:aws:iam::111111111111:user/librelinkward/pairs/*')
+    expect(create.Condition.StringEquals['iam:PermissionsBoundary']).toEqual({ Ref: expect.stringMatching(/^PairBoundary/) })
+    expect(JSON.stringify(t.toJSON().Outputs)).toContain('PairsApiUrl')
+  })
+})

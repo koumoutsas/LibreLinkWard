@@ -7,7 +7,14 @@ export type Pair = {
 }
 
 const INSTALL = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,40}$/
-const SID = /^(linkup:[^\s]+|nightscout:[^\s]+)$/
+const SID = /^(linkup|nightscout):[A-Za-z0-9_.:/=+@-]+$/
+
+/** Throws a readable "Invalid ..." error unless install and sid are well formed. */
+export function validatePair(p: { install: string; sid: string }): { install: string; sid: string } {
+  if (typeof p?.install !== 'string' || !INSTALL.test(p.install)) throw new Error(`Invalid install name: ${JSON.stringify(p?.install)}`)
+  if (typeof p?.sid !== 'string' || !SID.test(p.sid) || p.sid.length > 256) throw new Error(`Invalid sid for ${p.install}: ${JSON.stringify(p?.sid)}`)
+  return { install: p.install, sid: p.sid }
+}
 
 /** Reads the `pairs` context: an array, or a JSON string of one (from `-c pairs=...`). */
 export function parsePairs(raw: unknown): Pair[] {
@@ -15,8 +22,7 @@ export function parsePairs(raw: unknown): Pair[] {
   if (!Array.isArray(list)) throw new Error('context "pairs" must be a list of {install, sid}')
   const seen = new Set<string>()
   return list.map((p: Pair) => {
-    if (!INSTALL.test(p?.install ?? '')) throw new Error(`Invalid install name: ${JSON.stringify(p?.install)}`)
-    if (!SID.test(p?.sid ?? '')) throw new Error(`Invalid sid for ${p.install}: ${JSON.stringify(p?.sid)}`)
+    validatePair(p)
     const key = pairKey(p)
     if (seen.has(key)) throw new Error(`Duplicate pair ${p.install} / ${p.sid}`)
     seen.add(key)

@@ -6,7 +6,7 @@ Each family or ward deploys its own copy of the stack into its own AWS account. 
 
 ## Cost
 
-Usage costs are well under $1 a month for a handful of patients: Firehose delivery, S3 Tables storage and compaction. Athena queries cost $5 per TB scanned. The one fixed cost is Secrets Manager, about $0.40 a month for each (install, patient) pair's stored config.
+Usage costs are well under $1 a month for a handful of patients: Firehose delivery, S3 Tables storage and compaction. Athena queries cost $5 per TB scanned. Pairs issued through the admin API cost nothing. Pairs managed by CDK keep their config in Secrets Manager, at about $0.40 a month each.
 
 ## 1. Deploy the stack
 
@@ -33,26 +33,37 @@ Things to know before deploying:
 Each computer that should record a patient needs its own config. This lets you see who wrote what and revoke one computer without affecting the others.
 
 1. **Get the patient id.** In LibreLinkWard, open **Settings > Accounts**. Under the patient, **Data recording** shows the patient id (for example `linkup:1a2b…`). Press **Copy**.
-2. **List the pairs.** Put every (install, patient) pair in `infra/pairs.local.json`, then deploy again. The file is gitignored, because patient ids should not end up in a public repo; keep a backup of it. Install names may use letters, digits, `.`, `_` and `-`.
-   ```json
-   [
-     { "install": "ward-desk", "sid": "linkup:1a2b…" },
-     { "install": "home-mac", "sid": "linkup:1a2b…" }
-   ]
-   ```
-   `-c 'pairs=[…]'` on the command line overrides the file.
-3. **Print each config** (macOS: add `| pbcopy` to copy it instead of showing the secret):
+2. **Create the pair** with the admin API. The stack outputs its URL as `PairsApiUrl`, and `infra/scripts/pairs.ts` calls it with your own AWS credentials, which need `execute-api:Invoke` on it; account admins have this. Install names may use letters, digits, `.`, `_` and `-`.
    ```sh
-   scripts/blob.sh ward-desk linkup:1a2b… eu-central-1
+   cd infra
+   export AWS_REGION=eu-central-1
+   npx ts-node scripts/pairs.ts create ward-desk linkup:1a2b…
    ```
-4. **Install it on the matching computer.** Paste the config into **Data recording** for that patient and press **Save**. The app rejects a config issued for another patient. Press **Test connection**, then turn on **Record this patient**.
+   The config is copied to the clipboard (macOS). Add `--print` to print it instead. **It is shown only this once.** If it is lost, revoke the pair and create it again.
+3. **Install it on the matching computer.** Paste the config into **Data recording** for that patient and press **Save**. The app rejects a config issued for another patient. Press **Test connection**, then turn on **Record this patient**. A brand-new key can take up to a minute to work; if the first test fails, try again.
 
 Recording only sends readings from the moment it is turned on. Turning it off discards anything not yet sent.
 
-## Revoke or rotate
+```sh
+npx ts-node scripts/pairs.ts list                          # install, patient id, created, created by
+npx ts-node scripts/pairs.ts revoke ward-desk linkup:1a2b…
+```
 
-- **Revoke:** remove the pair from `pairs.local.json` and deploy again. Its IAM user and key are deleted, and that install shows "Recording stopped".
-- **Rotate a key:** add `"serial": 1` to the pair (or increase it), deploy, then paste the new config on that computer.
+**Revoke** deletes the pair's IAM user and key. AWS takes a few minutes to stop accepting the key everywhere; about 4 minutes in our test. After that the install shows "Recording stopped". **To rotate a key,** revoke the pair and create it again, then paste the new config.
+
+### How the API is protected
+
+- **Who can call it:** only signed AWS requests from principals in this account with `execute-api:Invoke`; unsigned calls get 403.
+- **What its function can create:** IAM users under the path `/librelinkward/pairs/` only, and only with a permissions boundary that allows nothing beyond writing to this stream.
+- **What it stores:** nothing besides those IAM users. Each user is tagged with its install, patient id and the admin who created it, and that user list is the registry. Configs are not stored anywhere.
+
+### Pairs managed by CDK (older method)
+
+Pairs listed in the gitignored `infra/pairs.local.json` are still created on every deploy, with their config stored in Secrets Manager (about $0.40 a month each):
+- **Print a config:** `scripts/blob.sh <install> <sid> <region>`.
+- **Revoke:** remove the entry and deploy again.
+
+`pairs.ts list` and `revoke` don't see these pairs. Prefer the API for new pairs.
 
 ## Analytics access
 

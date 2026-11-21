@@ -61,6 +61,20 @@ Workflow: commit and push after each finished piece of work; update this file.
     - The test rows, the test pair and the temporary Athena workgroup were then removed.
     - Pairs live in `infra/pairs.local.json`, which is gitignored and stays on this Mac. The first real pair is `home-macbook` for one LibreLinkUp patient, issued 2026-11-21.
 
+- [x] Pairs admin API (`infra/lambda/pairs.ts`, `infra/scripts/pairs.ts`).
+  - **Endpoints:** API Gateway HTTP API with IAM auth: `POST`, `GET` and `DELETE /pairs`.
+  - **Registry:** the pairs' IAM users, under path `/librelinkward/pairs/` and named `llw-pair-<install>-<sha256(sid)[0:12]>`, with tags for install, sid and created-by. No database.
+  - **Guardrail:** a permissions boundary that only allows writing to the stream; `CreateUser` and `PutUserPolicy` require it.
+  - **Configs** are returned once and never stored.
+  - **Deployed** to eu-central-1 and checked live:
+    - an unsigned call gets 403;
+    - create works, and the new key works after about 10 s;
+    - a duplicate gets 409;
+    - list works;
+    - revoke works, and AWS refuses the revoked key after about 240 s;
+    - a second revoke gets 404.
+  - **CDK pairs:** the `pairs.local.json` path still works, and `home-macbook` remains a CDK pair.
+
 ## Known issues / notes
 - Nightscout: uploads only what is in the 12 h in-memory history, so an outage longer than that loses readings; API v3 not evaluated; labels hardcoded English; logout keeps Nightscout configs.
 - Old `useGlucoseAlerts` hook is now dead code (superseded by the alarm engine); `alertStore` still holds the bring-to-front/flash/sound toggles. Snooze applies to all kinds incl. urgent low (no bypass). Alarm sound/flash is triggered by the renderer, so a renderer window must exist (hidden-to-tray is fine). Tray number follows a patient only when exactly one is shared. Overlay/compact window mode UI was dropped from the dashboard.

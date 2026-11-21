@@ -1,4 +1,10 @@
+import * as path from 'path'
 import * as cdk from 'aws-cdk-lib'
+import * as apigw from 'aws-cdk-lib/aws-apigatewayv2'
+import { HttpIamAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers'
+import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations'
+import * as lambda from 'aws-cdk-lib/aws-lambda'
+import * as nodejs from 'aws-cdk-lib/aws-lambda-nodejs'
 import { CfnOutput, Fn, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib'
 import * as custom from 'aws-cdk-lib/custom-resources'
 import * as firehose from 'aws-cdk-lib/aws-kinesisfirehose'
@@ -188,6 +194,8 @@ export class StorageStack extends Stack {
       })
     }
 
+    this.pairsApi(stream)
+
     if (props.analyticsPrincipal) {
       const reader = new iam.Role(this, 'AnalyticsReader', {
         assumedBy: new iam.ArnPrincipal(props.analyticsPrincipal),
@@ -213,5 +221,69 @@ export class StorageStack extends Stack {
     new CfnOutput(this, 'StreamName', { value: stream.ref })
     new CfnOutput(this, 'TableIdentifier', { value: `s3tablescatalog/${bucketName}.${NAMESPACE}.${TABLE}` })
     new CfnOutput(this, 'Pairs', { value: props.pairs.map(secretName).join(' ') || '(none)' })
+  }
+
+  /**
+   * Admin API (IAM-authenticated) that issues, lists and revokes pairs at run
+   * time. Users it creates live under /librelinkward/pairs/ and carry a
+   * permissions boundary that allows nothing but writing to this stream.
+   */
+  private pairsApi(stream: firehose.CfnDeliveryStream): void {
+    const { account } = this
+    const boundary = new iam.ManagedPolicy(this, 'PairBoundary', {
+      description: 'Upper bound for LibreLinkWard pair users: write readings only',
+      statements: [new iam.PolicyStatement({
+        actions: ['firehose:PutRecordBatch', 'firehose:DescribeDeliveryStream'],
+        resources: [stream.attrArn],
+      })],
+    })
+    const pairUsers = `arn:aws:iam::${account}:user/librelinkward/pairs/*`
+
+    const fn = new nodejs.NodejsFunction(this, 'PairsFunction', {
+      entry: path.join(__dirname, '..', 'lambda', 'pairs.ts'),
+      runtime: lambda.Runtime.NODEJS_22_X,
+      architecture: lambda.Architecture.ARM_64,
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
+      environment: {
+        STREAM_ARN: stream.attrArn,
+        STREAM_NAME: stream.ref,
+        BOUNDARY_ARN: boundary.managedPolicyArn,
+      },
+      bundling: { externalModules: ['@aws-sdk/*'], minify: true },
+      logGroup: new logs.LogGroup(this, 'PairsLogs', { retention: logs.RetentionDays.ONE_MONTH, removalPolicy: RemovalPolicy.DESTROY }),
+    })
+    // Creating users and attaching policies only works with the boundary attached.
+    fn.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['iam:CreateUser', 'iam:PutUserPolicy'],
+      resources: [pairUsers],
+      conditions: { StringEquals: { 'iam:PermissionsBoundary': boundary.managedPolicyArn } },
+    }))
+    fn.addToRolePolicy(new iam.PolicyStatement({
+      actions: [
+        'iam:GetUser', 'iam:TagUser', 'iam:ListUserTags', 'iam:DeleteUser',
+        'iam:CreateAccessKey', 'iam:ListAccessKeys', 'iam:DeleteAccessKey',
+        'iam:ListUserPolicies', 'iam:DeleteUserPolicy',
+      ],
+      resources: [pairUsers],
+    }))
+    // A user that does not exist yet is checked as user/<name>, without its path.
+    fn.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['iam:GetUser'],
+      resources: [`arn:aws:iam::${account}:user/llw-pair-*`],
+    }))
+    fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['iam:ListUsers'], resources: ['*'] }))
+
+    const api = new apigw.HttpApi(this, 'PairsApi', {
+      description: 'LibreLinkWard pair administration (IAM auth)',
+      defaultAuthorizer: new HttpIamAuthorizer(),
+    })
+    const integration = new HttpLambdaIntegration('PairsIntegration', fn)
+    api.addRoutes({
+      path: '/pairs',
+      methods: [apigw.HttpMethod.GET, apigw.HttpMethod.POST, apigw.HttpMethod.DELETE],
+      integration,
+    })
+    new CfnOutput(this, 'PairsApiUrl', { value: api.apiEndpoint })
   }
 }
